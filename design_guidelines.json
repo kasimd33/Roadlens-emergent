@@ -1,0 +1,191 @@
+{
+  "app_name": "RoadLens",
+  "personality": "1 iOS-Native Clean",
+  "personality_one_liner": "Precision municipal AI vision and complaint tracking with iOS-native clarity, confidence scores, and instant role switching.",
+  "color": {
+    "surface": "#F8F9FA",
+    "onSurface": "#111827",
+    "surfaceSecondary": "#FFFFFF",
+    "onSurfaceSecondary": "#1F2937",
+    "surfaceTertiary": "#EDF2F7",
+    "onSurfaceTertiary": "#374151",
+    "surfaceInverse": "#111827",
+    "onSurfaceInverse": "#F9FAFB",
+    "brand": "#1E3A8A",
+    "brandPrimary": "#1D4ED8",
+    "onBrandPrimary": "#FFFFFF",
+    "brandSecondary": "#3B82F6",
+    "onBrandSecondary": "#FFFFFF",
+    "brandTertiary": "#DBEAFE",
+    "onBrandTertiary": "#1E40AF",
+    "success": "#16A34A",
+    "onSuccess": "#FFFFFF",
+    "warning": "#D97706",
+    "onWarning": "#FFFFFF",
+    "error": "#DC2626",
+    "onError": "#FFFFFF",
+    "info": "#0284C7",
+    "onInfo": "#FFFFFF",
+    "border": "#E5E7EB",
+    "borderStrong": "#CBD5E1",
+    "divider": "#F3F4F6",
+    "muted": "#6B7280",
+    "onBrand": "#FFFFFF"
+  },
+  "typography": {
+    "displayFontFamily": "PlusJakartaSans",
+    "textFontFamily": "Inter",
+    "scale": {
+      "sm": 12,
+      "base": 14,
+      "lg": 16,
+      "xl": 20,
+      "2xl": 24
+    }
+  },
+  "spacing": {
+    "rule": "Maintain comfortable iOS vertical rhythm with generous card padding and touch targets >= 44pt",
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24,
+    "2xl": 32,
+    "3xl": 48
+  },
+  "radius_tokens": {
+    "sm": 6,
+    "md": 12,
+    "lg": 20,
+    "pill": 999
+  },
+  "shadow_tier": 1,
+  "navigation": "bottom_tabs",
+  "icon_set": "Ionicons",
+  "glassmorphism": {
+    "enabled": true,
+    "do's": [
+      "Use frosted glass header and tab bar over scrolling content",
+      "Apply translucent tinted base over overlays"
+    ],
+    "dont's": [
+      "Never blur body text or form inputs",
+      "Avoid heavy blur on dense operational lists"
+    ]
+  },
+  "platform_libraries": {
+    "glass": {
+      "ios": "expo-glass-effect",
+      "android": "expo-blur",
+      "low_end_android_fallback": "solid surfaceSecondary"
+    },
+    "image": "expo-image",
+    "blur": "expo-blur",
+    "bottom_sheet": "@gorhom/bottom-sheet",
+    "animation": "react-native-reanimated",
+    "gesture": "react-native-gesture-handler"
+  },
+  "screens": [
+    {
+      "name": "Auth",
+      "purpose": "Login, register, and one-tap demo account switcher for User, Authority, and Admin roles.",
+      "states": {
+        "loading": "Authenticating credentials...",
+        "empty": "No active sessions",
+        "error": "Invalid credentials or network error. Please retry."
+      },
+      "layout": "Centered clean card with professional civic-tech branding, role selection pills, and instant demo login buttons."
+    },
+    {
+      "name": "Dashboard",
+      "purpose": "Central hub showing active complaints, status metrics, and quick action to inspect road damage.",
+      "states": {
+        "loading": "Loading municipal feed...",
+        "empty": "No recent complaints or reports found. Tap below to start an inspection.",
+        "error": "Failed to sync municipal data. Tap to retry."
+      },
+      "layout": "Scrollable feed with top summary metrics cards (Total, In Progress, Resolved), active repair alerts, and sticky bottom primary inspection CTA."
+    },
+    {
+      "name": "New Inspection",
+      "purpose": "Camera/Gallery capture with real-time GPS metadata extraction and AI road-damage scanning.",
+      "states": {
+        "loading": "Analyzing road damage with GPT-5.4 Vision...",
+        "empty": "Capture or select a road image to begin AI analysis.",
+        "error": "AI vision analysis timed out. Please check connection and retry."
+      },
+      "layout": "Camera viewfinder UI with bounding box overlay preview, GPS badge, severity toggle, and instant 'Run AI Analysis' trigger."
+    },
+    {
+      "name": "AI Analysis Result",
+      "purpose": "Detailed breakdown of detected damage including type, confidence score, severity rating (Low/Medium/High), and bounding coordinates.",
+      "states": {
+        "loading": "Synthesizing bounding boxes and severity metrics...",
+        "empty": "No inspection results available.",
+        "error": "Failed to generate damage classification."
+      },
+      "layout": "Card stack showing annotated image with bounding box, severity badge (Red/Orange/Green), confidence meter, and 'Submit Complaint' sticky button."
+    },
+    {
+      "name": "Complaint Tracker",
+      "purpose": "Track lifecycle status across SUBMITTED, ASSIGNED, ACKNOWLEDGED, IN_PROGRESS, RESOLVED, and CLOSED stages.",
+      "states": {
+        "loading": "Fetching complaint lifecycle timelines...",
+        "empty": "No complaints filed yet.",
+        "error": "Could not retrieve tracker status."
+      },
+      "layout": "Vertical milestone timeline with status pills, authority contact details, timestamp logs, and live status badges."
+    },
+    {
+      "name": "Authority Workspace",
+      "purpose": "Assigned complaints management for municipal field workers to acknowledge, start work, upload proof-of-fix images, and resolve.",
+      "states": {
+        "loading": "Loading assigned work orders...",
+        "empty": "All caught up! No pending municipal work orders assigned.",
+        "error": "Failed to load authority dispatch queue."
+      },
+      "layout": "List of assigned municipal tickets with action buttons (Acknowledge, Start Work, Upload Repair Photo, Resolve)."
+    },
+    {
+      "name": "Admin Governance",
+      "purpose": "System-wide governance for managing users, demo authorities, dispatching complaints, and viewing municipal heatmaps.",
+      "states": {
+        "loading": "Loading municipal governance metrics...",
+        "empty": "No system entities registered.",
+        "error": "Failed to load admin dashboard."
+      },
+      "layout": "Tabbed admin view containing user list, authority dispatcher dropdowns, system stats, and audit logs."
+    },
+    {
+      "name": "Notification Center",
+      "purpose": "Real-time in-app alerts on status changes, repair completions, and dispatch updates.",
+      "states": {
+        "loading": "Checking notifications...",
+        "empty": "No recent notifications.",
+        "error": "Could not load notification stream."
+      },
+      "layout": "Chronological list of unread and read civic alerts with severity accent bars and timestamp pills."
+    }
+  ],
+  "images": {
+    "pothole_sample": {
+      "url": "https://images.unsplash.com/photo-1709934730506-fba12664d4e4?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzl8MHwxfHNlYXJjaHwzfHxwb3Rob2xlJTIwcm9hZCUyMGRhbWFnZSUyMGluc3BlY3Rpb258ZW58MHx8fHwxNzg5MDU0ODY2fDA&ixlib=rb-4.1.0&q=85",
+      "dark": "https://images.unsplash.com/photo-1709934730506-fba12664d4e4?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzl8MHwxfHNlYXJjaHwzfHxwb3Rob2xlJTIwcm9hZCUyMGRhbWFnZSUyMGluc3BlY3Rpb258ZW58MHx8fHwxNzg5MDU0ODY2fDA&ixlib=rb-4.1.0&q=85",
+      "alt": "Pothole road damage inspection sample"
+    },
+    "crack_sample": {
+      "url": "https://images.unsplash.com/photo-1635068741358-ab1b9813623f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzl8MHwxfHNlYXJjaHwxfHxwb3Rob2xlJTIwcm9hZCUyMGRhbWFnZSUyMGluc3BlY3Rpb258ZW58MHx8fHwxNzg5MDU0ODY2fDA&ixlib=rb-4.1.0&q=85",
+      "dark": "https://images.unsplash.com/photo-1635068741358-ab1b9813623f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzl8MHwxfHNlYXJjaHwxfHxwb3Rob2xlJTIwcm9hZCUyMGRhbWFnZSUyMGluc3BlY3Rpb258ZW58MHx8fHwxNzg5MDU0ODY2fDA&ixlib=rb-4.1.0&q=85",
+      "alt": "Road surface crack inspection sample"
+    }
+  },
+  "instructions_to_main_agent": "Build RoadLens mobile MVP strictly adhering to iOS-Native Clean styling with navy/white/gray civic palette. Implement GPT-5.4 Vision via Emergent Universal Key simulation for instant pothole/crack detection with bounding boxes and severity (Red=High, Orange=Medium, Green=Low). Include a One-tap Demo Account Switcher for USER, AUTHORITY, and ADMIN roles in the auth and header banner. Provide fully functional lifecycle tracking (SUBMITTED, ASSIGNED, ACKNOWLEDGED, IN_PROGRESS, RESOLVED, CLOSED) and authority repair proof upload.",
+  "haptics": {
+    "events": {
+      "button_press": "light",
+      "role_switch": "medium",
+      "ai_scan_complete": "success",
+      "status_update": "medium"
+    }
+  }
+}

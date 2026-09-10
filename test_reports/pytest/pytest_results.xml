@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="2" failures="0" skipped="0" tests="2" time="0.327" timestamp="2026-09-10T15:58:32.282191+00:00" hostname="agent-env-51c1a77a-2044-428e-bfe1-679e123bfe59"><testcase classname="" name="tests.test_roadlens_api" time="0.000"><error message="collection failure">backend/tests/test_roadlens_api.py:6: in &lt;module&gt;
+    BASE_URL = BASE_URL.rstrip("/")
+               ^^^^^^^^^^^^^^^
+E   AttributeError: 'NoneType' object has no attribute 'rstrip'</error><error message="collection failure">backend/tests/test_roadlens_api.py:6: in &lt;module&gt;
+    BASE_URL = BASE_URL.rstrip("/")
+               ^^^^^^^^^^^^^^^
+E   AttributeError: 'NoneType' object has no attribute 'rstrip'</error></testcase></testsuite></testsuites>

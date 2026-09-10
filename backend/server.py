@@ -3,8 +3,15 @@ import re
 import json
 import uuid
 import base64
+import hashlib
+import secrets
 import logging
+import ipaddress
+import random
 import httpx
+from html import escape
+from html.parser import HTMLParser
+from urllib.parse import urlparse
 from datetime import datetime, timezone, timedelta
 from enum import Enum
 from typing import List, Optional, Dict, Any
@@ -39,6 +46,15 @@ JWT_SECRET = os.getenv("JWT_SECRET", "c9f8a3d5829147efb1263c94821a73d5e0a6b18c72
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 ACCESS_TOKEN_MINUTES = int(os.getenv("ACCESS_TOKEN_MINUTES", "1440"))
 EMERGENT_LLM_KEY = os.getenv("EMERGENT_LLM_KEY", "")
+RESET_CODE_MINUTES = int(os.getenv("RESET_CODE_MINUTES", "20"))
+
+# Emergent managed email (Resend). Base URL is a constant so it survives deployment.
+EMAIL_BASE_URL = "https://integrations.emergentagent.com"
+EMAIL_KEY = os.getenv("EMERGENT_EMAIL_KEY", "")
+EMAIL_FROM_NAME = os.getenv("EMAIL_FROM_NAME", "RoadLens")
+
+# Emergent managed Google OAuth session-data endpoint (called ONLY from backend)
+EMERGENT_OAUTH_SESSION_URL = "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data"
 
 # MongoDB async client
 client = AsyncIOMotorClient(MONGO_URL)
@@ -107,15 +123,14 @@ class RepairEvidence(BaseModel):
 
 
 class UserRegister(BaseModel):
-    username: str
+    email: str
     password: str
-    full_name: Optional[str] = None
+    name: Optional[str] = None
     phone: Optional[str] = None
-    role: Optional[UserRole] = UserRole.USER
 
 
 class UserLogin(BaseModel):
-    username: str
+    email: str
     password: str
 
 
@@ -123,11 +138,35 @@ class DemoLoginRequest(BaseModel):
     role: UserRole
 
 
+class GoogleSessionRequest(BaseModel):
+    session_id: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
+class ResetPasswordRequest(BaseModel):
+    email: str
+    code: str
+    new_password: str
+
+
+class AuthorityUserCreate(BaseModel):
+    email: str
+    password: str
+    name: str
+    authority_id: str
+
+
 class PublicUser(BaseModel):
     id: str
     username: str
+    email: str
     full_name: str
+    name: str
     role: UserRole
+    status: str = "ACTIVE"
     authority_id: Optional[str] = None
     authority_name: Optional[str] = None
     phone: Optional[str] = None
@@ -253,7 +292,7 @@ async def get_current_user(token: Optional[str] = Depends(oauth2_scheme)) -> Dic
         if not user_id:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
         user = await db.users.find_one({"id": user_id})
-        if not user or user.get("disabled", False):
+        if not user or user.get("disabled", False) or user.get("status") == "DISABLED":
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User account disabled or not found")
         return user
     except JWTError:
@@ -273,11 +312,16 @@ def require_roles(*allowed_roles: UserRole):
 
 
 def format_public_user(user: Dict[str, Any]) -> PublicUser:
+    email = user.get("email") or user.get("username", "")
+    name = user.get("name") or user.get("full_name") or (email.split("@")[0].capitalize() if email else "User")
     return PublicUser(
         id=user.get("id", str(user.get("_id", ""))),
-        username=user.get("username", ""),
-        full_name=user.get("full_name", user.get("username", "")),
+        username=user.get("username", email),
+        email=email,
+        full_name=name,
+        name=name,
         role=user.get("role", UserRole.USER),
+        status=user.get("status", "ACTIVE"),
         authority_id=user.get("authority_id"),
         authority_name=user.get("authority_name"),
         phone=user.get("phone"),
@@ -310,6 +354,118 @@ async def create_notification(
     return notif
 
 
+# --- Emergent Managed Email (Resend) with guardrail gate ---
+_SHORTENERS = ("bit.ly", "tinyurl.com", "t.co", "is.gd", "cutt.ly", "goo.gl", "rebrand.ly")
+_CRED_ASK = ("reply with your password", "reply with the code", "send your password", "cvv",
+             "send us your password", "enter your password below", "confirm your card number",
+             "your full card number", "seed phrase", "recovery phrase", "verify your card",
+             "social security number", "confirm your bank details")
+_HOSTISH = re.compile(r"\b(?:https?://)?((?:[a-z0-9-]+\.)+[a-z]{2,})", re.I)
+
+
+def _host_ok(host: str) -> bool:
+    if not host or "xn--" in host:
+        return False
+    try:
+        ipaddress.ip_address(host)
+        return False
+    except ValueError:
+        pass
+    return not any(host == s or host.endswith("." + s) for s in _SHORTENERS)
+
+
+def _same_site(shown: str, real: str) -> bool:
+    return shown == real or real.endswith("." + shown) or shown.endswith("." + real)
+
+
+class _EmailScan(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.tags, self.urls, self.anchors = set(), [], []
+        self._href, self._text = None, []
+
+    def handle_starttag(self, tag, attrs):
+        self.tags.add(tag.lower())
+        self.urls += [v for k, v in attrs if k.lower() in ("href", "src") and v]
+        if tag.lower() == "a":
+            self._href = dict((k.lower(), v) for k, v in attrs).get("href")
+            self._text = []
+
+    def handle_data(self, data):
+        if self._href is not None:
+            self._text.append(data)
+
+    def handle_endtag(self, tag):
+        if tag.lower() == "a" and self._href is not None:
+            self.anchors.append((self._href, "".join(self._text)))
+            self._href, self._text = None, []
+
+
+def _assert_safe_email(subject: str, html: str) -> None:
+    scan = _EmailScan()
+    scan.feed(html)
+    if scan.tags & {"form", "input", "textarea", "select"}:
+        raise ValueError("No forms or input fields in email (G2)")
+    body = f"{subject}\n{html}".lower()
+    for p in _CRED_ASK:
+        if p in body:
+            raise ValueError(f"Email asks the recipient for credentials: {p!r} (G2)")
+    for url in scan.urls:
+        low = url.strip().lower()
+        if low.startswith(("mailto:", "tel:", "cid:", "#")):
+            continue
+        if not low.startswith("https://"):
+            raise ValueError(f"Email links/assets must be absolute https: {url!r} (G3)")
+        host = urlparse(low).hostname or ""
+        if not _host_ok(host) or urlparse(low).username is not None:
+            raise ValueError(f"Shortened, numeric-host or credential-bearing URL: {url!r} (G3)")
+    for href, text in scan.anchors:
+        real = urlparse(href.strip().lower()).hostname or ""
+        if not real:
+            continue
+        for m in _HOSTISH.finditer(text):
+            if not _same_site(m.group(1).lower(), real):
+                raise ValueError(f"Anchor text {m.group(1)!r} != real link host {real!r} (G3)")
+
+
+async def send_email(*, to: str, subject: str, html: str) -> Optional[str]:
+    if not EMAIL_KEY:
+        logger.warning("EMERGENT_EMAIL_KEY not configured; skipping email send.")
+        return None
+    _assert_safe_email(subject, html)
+    payload = {"to": [to], "subject": subject, "html": html, "from_name": EMAIL_FROM_NAME}
+    try:
+        async with httpx.AsyncClient(timeout=30) as http_client:
+            resp = await http_client.post(
+                f"{EMAIL_BASE_URL}/api/v1/email/send",
+                headers={"X-Email-Key": EMAIL_KEY},
+                json=payload,
+            )
+        resp.raise_for_status()
+        return resp.json().get("id")
+    except Exception as e:
+        logger.error(f"Email send error: {e}")
+        return None
+
+
+def build_reset_email_html(name: str, code: str) -> str:
+    return (
+        '<table role="presentation" width="100%" style="max-width:480px;margin:auto;'
+        'font-family:Arial,sans-serif"><tr><td style="padding:24px">'
+        '<h2 style="color:#0F2A4A;margin:0 0 8px">RoadLens Password Reset</h2>'
+        f'<p style="color:#334155;font-size:14px">Hi {escape(name)}, we received a request '
+        'to reset your RoadLens password.</p>'
+        '<p style="color:#334155;font-size:14px">Enter this verification code in the app to set a new password:</p>'
+        f'<p style="font-size:30px;font-weight:800;letter-spacing:6px;color:#0F2A4A;'
+        f'background:#EEF2F7;padding:14px;border-radius:10px;text-align:center;margin:16px 0">{escape(code)}</p>'
+        '<p style="color:#64748B;font-size:12px">This code expires in 20 minutes. '
+        'If you did not request this, you can safely ignore this email. '
+        'RoadLens will never ask you for your password by email.</p>'
+        '<p style="font-size:12px;color:#94A3B8;margin-top:16px">Sent by RoadLens Civic Infrastructure.</p>'
+        '</td></tr></table>'
+    )
+
+
 # --- App Initialization ---
 app = FastAPI(title="RoadLens AI Civic Inspection API")
 api_router = APIRouter(prefix="/api")
@@ -320,14 +476,31 @@ async def startup_event():
     logger.info("Initializing RoadLens Database and Indexes...")
     try:
         await db.users.create_index([("username", ASCENDING)], unique=True)
+        await db.users.create_index([("email", ASCENDING)])
         await db.complaints.create_index([("created_at", DESCENDING)])
         await db.complaints.create_index([("status", ASCENDING)])
         await db.complaints.create_index([("user_id", ASCENDING)])
         await db.complaints.create_index([("assigned_authority_id", ASCENDING)])
         await db.authorities.create_index([("code", ASCENDING)], unique=True)
         await db.notifications.create_index([("user_id", ASCENDING), ("created_at", DESCENDING)])
+        await db.password_reset_codes.create_index([("expires_at", ASCENDING)], expireAfterSeconds=0)
     except Exception as e:
         logger.warning(f"Index creation note: {e}")
+
+    # Backfill: ensure legacy user docs have email/name/status fields for new auth flow
+    try:
+        async for u in db.users.find({"$or": [{"email": {"$exists": False}}, {"status": {"$exists": False}}]}):
+            await db.users.update_one(
+                {"id": u["id"]},
+                {"$set": {
+                    "email": u.get("email", u.get("username", "")),
+                    "name": u.get("name", u.get("full_name", "")),
+                    "status": u.get("status", "ACTIVE"),
+                    "auth_provider": u.get("auth_provider", "password"),
+                }}
+            )
+    except Exception as e:
+        logger.warning(f"User backfill note: {e}")
 
     # Seed Demo Authorities
     authorities_data = [
@@ -389,10 +562,14 @@ async def startup_event():
         {
             "id": "user-citizen-1",
             "username": "citizen@roadlens.gov",
+            "email": "citizen@roadlens.gov",
             "password_hash": hash_password("Citizen@123"),
             "full_name": "Elena Rostova (Citizen)",
+            "name": "Elena Rostova",
             "phone": "+1 (555) 234-5678",
             "role": UserRole.USER.value,
+            "status": "ACTIVE",
+            "auth_provider": "password",
             "authority_id": None,
             "authority_name": None,
             "disabled": False,
@@ -401,10 +578,14 @@ async def startup_event():
         {
             "id": "user-authority-1",
             "username": "authority@roadlens.gov",
+            "email": "authority@roadlens.gov",
             "password_hash": hash_password("Authority@123"),
             "full_name": "Marcus Vance (Lead Field Engineer)",
+            "name": "Marcus Vance",
             "phone": "+1 (555) 345-6789",
             "role": UserRole.AUTHORITY.value,
+            "status": "ACTIVE",
+            "auth_provider": "password",
             "authority_id": "auth-downtown",
             "authority_name": "Downtown Roads & Works Division",
             "disabled": False,
@@ -413,10 +594,14 @@ async def startup_event():
         {
             "id": "user-admin-1",
             "username": "admin@roadlens.gov",
+            "email": "admin@roadlens.gov",
             "password_hash": hash_password("Admin@123"),
             "full_name": "Director Sarah Jenkins (Municipal Admin)",
+            "name": "Sarah Jenkins",
             "phone": "+1 (555) 456-7890",
             "role": UserRole.ADMIN.value,
+            "status": "ACTIVE",
+            "auth_provider": "password",
             "authority_id": None,
             "authority_name": None,
             "disabled": False,
@@ -649,24 +834,29 @@ async def startup_event():
 # ==============================================================================
 @api_router.post("/auth/register", response_model=TokenResponse, status_code=201)
 async def register(body: UserRegister):
-    username = body.username.lower().strip()
-    if not username or len(body.password) < 6:
-        raise HTTPException(status_code=400, detail="Username required and password must be >= 6 characters")
+    email = body.email.lower().strip()
+    if not email or "@" not in email or len(body.password) < 6:
+        raise HTTPException(status_code=400, detail="Valid email required and password must be >= 6 characters")
 
-    existing = await db.users.find_one({"username": username})
+    existing = await db.users.find_one({"username": email})
     if existing:
-        raise HTTPException(status_code=409, detail="Username or email already registered")
+        raise HTTPException(status_code=409, detail="An account with this email already exists")
 
-    # Security: Users cannot self-promote to ADMIN or AUTHORITY
+    # Security: public registration ALWAYS creates a USER. Role is never taken from the client.
     role = UserRole.USER.value
+    name = (body.name or "").strip() or email.split("@")[0].capitalize()
 
     user_doc = {
         "id": str(uuid.uuid4()),
-        "username": username,
+        "username": email,
+        "email": email,
         "password_hash": hash_password(body.password),
-        "full_name": body.full_name or username.split("@")[0].capitalize(),
+        "full_name": name,
+        "name": name,
         "phone": body.phone or "",
         "role": role,
+        "status": "ACTIVE",
+        "auth_provider": "password",
         "authority_id": None,
         "authority_name": None,
         "disabled": False,
@@ -679,13 +869,108 @@ async def register(body: UserRegister):
 
 @api_router.post("/auth/login", response_model=TokenResponse)
 async def login(body: UserLogin):
-    username = body.username.lower().strip()
-    user = await db.users.find_one({"username": username})
-    if not user or user.get("disabled") or not verify_password(body.password, user.get("password_hash", "")):
-        raise HTTPException(status_code=401, detail="Invalid username or password")
+    email = body.email.lower().strip()
+    user = await db.users.find_one({"username": email})
+    if not user or user.get("disabled") or user.get("status") == "DISABLED" or not verify_password(body.password, user.get("password_hash", "")):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
 
     token = create_access_token(user["id"], user.get("role", UserRole.USER.value))
     return TokenResponse(access_token=token, user=format_public_user(user))
+
+
+@api_router.post("/auth/session", response_model=TokenResponse)
+async def google_session(body: GoogleSessionRequest):
+    """
+    Exchanges an Emergent Google OAuth session_id (one-time) for a RoadLens JWT.
+    Upserts the user by email. New Google users are always created as USER.
+    """
+    try:
+        async with httpx.AsyncClient(timeout=25.0) as http_client:
+            resp = await http_client.get(
+                EMERGENT_OAUTH_SESSION_URL,
+                headers={"X-Session-ID": body.session_id}
+            )
+        if resp.status_code != 200:
+            raise HTTPException(status_code=401, detail="Invalid or expired Google session")
+        data = resp.json()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Google session exchange error: {e}")
+        raise HTTPException(status_code=401, detail="Could not verify Google session")
+
+    email = (data.get("email") or "").lower().strip()
+    if not email:
+        raise HTTPException(status_code=401, detail="Google account did not provide an email")
+    name = data.get("name") or email.split("@")[0].capitalize()
+
+    user = await db.users.find_one({"username": email})
+    if not user:
+        user = {
+            "id": str(uuid.uuid4()),
+            "username": email,
+            "email": email,
+            "password_hash": "",
+            "full_name": name,
+            "name": name,
+            "phone": "",
+            "role": UserRole.USER.value,
+            "status": "ACTIVE",
+            "auth_provider": "google",
+            "authority_id": None,
+            "authority_name": None,
+            "disabled": False,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.users.insert_one(user)
+    elif user.get("disabled") or user.get("status") == "DISABLED":
+        raise HTTPException(status_code=403, detail="This account has been disabled")
+
+    token = create_access_token(user["id"], user.get("role", UserRole.USER.value))
+    return TokenResponse(access_token=token, user=format_public_user(user))
+
+
+@api_router.post("/auth/forgot-password", status_code=202)
+async def forgot_password(body: ForgotPasswordRequest):
+    """Generates a one-time reset code and emails it. Always returns a generic response."""
+    email = body.email.lower().strip()
+    user = await db.users.find_one({"username": email})
+    if user and user.get("auth_provider") != "google":
+        code = f"{random.randint(0, 999999):06d}"
+        await db.password_reset_codes.delete_many({"email": email})
+        await db.password_reset_codes.insert_one({
+            "email": email,
+            "code_hash": hashlib.sha256(code.encode()).hexdigest(),
+            "expires_at": datetime.now(timezone.utc) + timedelta(minutes=RESET_CODE_MINUTES),
+            "used": False,
+            "created_at": datetime.now(timezone.utc)
+        })
+        await send_email(
+            to=email,
+            subject="Your RoadLens password reset code",
+            html=build_reset_email_html(user.get("name") or user.get("full_name") or "there", code)
+        )
+    return {"message": "If an account exists for that email, a reset code has been sent."}
+
+
+@api_router.post("/auth/reset-password")
+async def reset_password(body: ResetPasswordRequest):
+    email = body.email.lower().strip()
+    if len(body.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    code_hash = hashlib.sha256(body.code.strip().encode()).hexdigest()
+    record = await db.password_reset_codes.find_one_and_update(
+        {"email": email, "code_hash": code_hash, "used": False,
+         "expires_at": {"$gt": datetime.now(timezone.utc)}},
+        {"$set": {"used": True}}
+    )
+    if not record:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset code")
+    await db.users.update_one(
+        {"username": email},
+        {"$set": {"password_hash": hash_password(body.new_password)}}
+    )
+    return {"message": "Password reset successfully. Please log in with your new password."}
 
 
 @api_router.post("/auth/demo-login", response_model=TokenResponse)
@@ -710,6 +995,45 @@ async def demo_login(body: DemoLoginRequest):
 @api_router.get("/auth/me", response_model=PublicUser)
 async def get_me(user: Dict[str, Any] = Depends(get_current_user)):
     return format_public_user(user)
+
+
+@api_router.post("/admin/authority-users", response_model=PublicUser, status_code=201)
+async def create_authority_user(
+    body: AuthorityUserCreate,
+    current_user: Dict[str, Any] = Depends(require_roles(UserRole.ADMIN))
+):
+    """Admin-only: create an AUTHORITY login account linked to an authority department."""
+    email = body.email.lower().strip()
+    if not email or "@" not in email or len(body.password) < 6:
+        raise HTTPException(status_code=400, detail="Valid email and password (>= 6 chars) required")
+
+    authority = await db.authorities.find_one({"id": body.authority_id})
+    if not authority:
+        raise HTTPException(status_code=404, detail="Authority department not found")
+
+    existing = await db.users.find_one({"username": email})
+    if existing:
+        raise HTTPException(status_code=409, detail="An account with this email already exists")
+
+    user_doc = {
+        "id": str(uuid.uuid4()),
+        "username": email,
+        "email": email,
+        "password_hash": hash_password(body.password),
+        "full_name": body.name.strip(),
+        "name": body.name.strip(),
+        "phone": "",
+        "role": UserRole.AUTHORITY.value,
+        "status": "ACTIVE",
+        "auth_provider": "password",
+        "authority_id": authority["id"],
+        "authority_name": authority["name"],
+        "disabled": False,
+        "created_by": current_user["id"],
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.users.insert_one(user_doc)
+    return format_public_user(user_doc)
 
 
 # ==============================================================================

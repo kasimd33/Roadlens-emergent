@@ -1,25 +1,16 @@
 import React, { useState } from "react";
 import { View, Text, Pressable, StyleSheet, Modal, ActivityIndicator } from "react-native";
+import { useRouter } from "expo-router";
 import { useAuth } from "@/src/context/AuthContext";
 import { useTheme } from "@/src/theme";
 import { UserRole } from "@/src/types";
 import Ionicons from "@react-native-vector-icons/ionicons";
 
 export const DemoRoleBanner: React.FC = () => {
-  const { user, role, demoLogin, logout, isLoading } = useAuth();
+  const { user, role, logout, isLoading } = useAuth();
   const { colors } = useTheme();
+  const router = useRouter();
   const [modalVisible, setModalVisible] = useState(false);
-
-  const getRoleTitle = (r: UserRole) => {
-    switch (r) {
-      case "USER":
-        return "Citizen Reporter";
-      case "AUTHORITY":
-        return "Authority Field Lead";
-      case "ADMIN":
-        return "City Admin Director";
-    }
-  };
 
   const getRoleColor = (r: UserRole) => {
     switch (r) {
@@ -32,9 +23,21 @@ export const DemoRoleBanner: React.FC = () => {
     }
   };
 
-  const handleRoleSwitch = async (targetRole: UserRole) => {
+  const getRoleLabel = (r: UserRole) => {
+    switch (r) {
+      case "USER":
+        return "Citizen Reporter";
+      case "AUTHORITY":
+        return "Authority Field Lead";
+      case "ADMIN":
+        return "City Admin Director";
+    }
+  };
+
+  const handleLogout = async () => {
     setModalVisible(false);
-    await demoLogin(targetRole);
+    await logout();
+    router.replace("/login");
   };
 
   return (
@@ -53,145 +56,71 @@ export const DemoRoleBanner: React.FC = () => {
             </View>
           </View>
           <Text style={styles.userName} numberOfLines={1}>
-            {user?.full_name || user?.username || "Guest Citizen"}
+            {user?.name || user?.full_name || user?.email || "Guest"}
           </Text>
         </View>
       </View>
 
       <Pressable
-        testID="open-role-switcher-btn"
+        testID="profile-menu-btn"
         onPress={() => setModalVisible(true)}
         style={({ pressed }) => [
-          styles.switchBtn,
+          styles.profileBtn,
           { backgroundColor: colors.brandSecondary, opacity: pressed ? 0.8 : 1 },
         ]}
       >
         {isLoading ? (
           <ActivityIndicator size="small" color="#FFFFFF" />
         ) : (
-          <>
-            <Ionicons name="swap-horizontal" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />
-            <Text style={styles.switchBtnText}>Switch Role</Text>
-          </>
+          <Ionicons name="person-circle-outline" size={20} color="#FFFFFF" />
         )}
       </Pressable>
 
-      {/* Role Switcher Modal */}
       <Modal
         visible={modalVisible}
         transparent
         animationType="fade"
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.surfaceSecondary }]}>
+        <Pressable style={styles.modalOverlay} onPress={() => setModalVisible(false)}>
+          <Pressable style={[styles.modalContent, { backgroundColor: colors.surfaceSecondary }]}>
             <View style={styles.modalHeader}>
-              <View>
-                <Text style={[styles.modalTitle, { color: colors.onSurfaceSecondary }]}>
-                  Demo Role Switcher
-                </Text>
-                <Text style={[styles.modalSub, { color: colors.muted }]}>
-                  Instantly simulate and test all 3 civic workflows
-                </Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.modalTitle, { color: colors.onSurfaceSecondary }]}>My Account</Text>
+                <Text style={[styles.modalSub, { color: colors.muted }]}>Signed in session</Text>
               </View>
-              <Pressable
-                testID="close-role-switcher-btn"
-                onPress={() => setModalVisible(false)}
-                style={styles.closeBtn}
-              >
+              <Pressable testID="close-profile-btn" onPress={() => setModalVisible(false)} style={styles.closeBtn}>
                 <Ionicons name="close" size={20} color={colors.muted} />
               </Pressable>
             </View>
 
-            {/* Role Options */}
-            <Pressable
-              testID="switch-to-citizen-btn"
-              onPress={() => handleRoleSwitch("USER")}
-              style={[
-                styles.roleOptionCard,
-                { borderColor: role === "USER" ? colors.brandPrimary : colors.border },
-                role === "USER" && { backgroundColor: colors.surfaceTertiary },
-              ]}
-            >
-              <View style={[styles.roleIconCircle, { backgroundColor: "#DBEAFE" }]}>
-                <Ionicons name="person" size={20} color={colors.brandPrimary} />
+            <View style={[styles.profileCard, { borderColor: colors.border }]}>
+              <View style={[styles.avatar, { backgroundColor: getRoleColor(role) }]}>
+                <Ionicons name="person" size={24} color="#FFFFFF" />
               </View>
               <View style={{ flex: 1 }}>
-                <View style={styles.roleCardTitleRow}>
-                  <Text style={[styles.roleName, { color: colors.onSurfaceSecondary }]}>
-                    Citizen (USER)
-                  </Text>
-                  {role === "USER" && <Text style={styles.activeTag}>ACTIVE</Text>}
-                </View>
-                <Text style={[styles.roleDesc, { color: colors.muted }]}>
-                  Scan road damage, get AI bounding box, submit reports, track status.
+                <Text style={[styles.profileName, { color: colors.onSurfaceSecondary }]} numberOfLines={1}>
+                  {user?.name || user?.full_name || "User"}
                 </Text>
-              </View>
-            </Pressable>
-
-            <Pressable
-              testID="switch-to-authority-btn"
-              onPress={() => handleRoleSwitch("AUTHORITY")}
-              style={[
-                styles.roleOptionCard,
-                { borderColor: role === "AUTHORITY" ? colors.warning : colors.border },
-                role === "AUTHORITY" && { backgroundColor: colors.surfaceTertiary },
-              ]}
-            >
-              <View style={[styles.roleIconCircle, { backgroundColor: "#FEF3C7" }]}>
-                <Ionicons name="construct" size={20} color={colors.warning} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <View style={styles.roleCardTitleRow}>
-                  <Text style={[styles.roleName, { color: colors.onSurfaceSecondary }]}>
-                    Field Engineer (AUTHORITY)
-                  </Text>
-                  {role === "AUTHORITY" && <Text style={[styles.activeTag, { color: colors.warning }]}>ACTIVE</Text>}
-                </View>
-                <Text style={[styles.roleDesc, { color: colors.muted }]}>
-                  View assigned tickets, acknowledge, start work, upload repair proof, resolve.
+                <Text style={[styles.profileEmail, { color: colors.muted }]} numberOfLines={1}>
+                  {user?.email}
                 </Text>
-              </View>
-            </Pressable>
-
-            <Pressable
-              testID="switch-to-admin-btn"
-              onPress={() => handleRoleSwitch("ADMIN")}
-              style={[
-                styles.roleOptionCard,
-                { borderColor: role === "ADMIN" ? colors.brandPrimary : colors.border },
-                role === "ADMIN" && { backgroundColor: colors.surfaceTertiary },
-              ]}
-            >
-              <View style={[styles.roleIconCircle, { backgroundColor: "#EDE9FE" }]}>
-                <Ionicons name="shield-checkmark" size={20} color="#6D28D9" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <View style={styles.roleCardTitleRow}>
-                  <Text style={[styles.roleName, { color: colors.onSurfaceSecondary }]}>
-                    City Director (ADMIN)
-                  </Text>
-                  {role === "ADMIN" && <Text style={[styles.activeTag, { color: "#6D28D9" }]}>ACTIVE</Text>}
+                <View style={[styles.roleTag, { backgroundColor: getRoleColor(role) }]}>
+                  <Text style={styles.roleTagText}>{getRoleLabel(role)}</Text>
                 </View>
-                <Text style={[styles.roleDesc, { color: colors.muted }]}>
-                  Municipal overview, assign/reassign authorities, close complaints, governance.
-                </Text>
               </View>
-            </Pressable>
+            </View>
 
             <Pressable
               testID="logout-btn"
-              onPress={async () => {
-                setModalVisible(false);
-                await logout();
-              }}
+              onPress={handleLogout}
               style={[styles.logoutBtn, { borderColor: colors.error }]}
             >
               <Ionicons name="log-out-outline" size={16} color={colors.error} style={{ marginRight: 6 }} />
-              <Text style={[styles.logoutText, { color: colors.error }]}>Log Out Current Session</Text>
+              <Text style={[styles.logoutText, { color: colors.error }]}>Log Out</Text>
             </Pressable>
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
     </View>
   );
@@ -243,17 +172,12 @@ const styles = StyleSheet.create({
     marginTop: 1,
     maxWidth: 180,
   },
-  switchBtn: {
-    flexDirection: "row",
+  profileBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 6,
-  },
-  switchBtnText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "700",
+    justifyContent: "center",
   },
   modalOverlay: {
     flex: 1,
@@ -290,40 +214,41 @@ const styles = StyleSheet.create({
   closeBtn: {
     padding: 4,
   },
-  roleOptionCard: {
+  profileCard: {
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1.5,
     borderRadius: 12,
-    padding: 12,
-    marginBottom: 12,
+    padding: 14,
+    marginBottom: 16,
     gap: 12,
   },
-  roleIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
   },
-  roleCardTitleRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 2,
+  profileName: {
+    fontSize: 15,
+    fontWeight: "800",
   },
-  roleName: {
-    fontSize: 14,
-    fontWeight: "700",
+  profileEmail: {
+    fontSize: 12,
+    marginTop: 1,
   },
-  activeTag: {
+  roleTag: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    marginTop: 6,
+  },
+  roleTagText: {
+    color: "#FFFFFF",
     fontSize: 10,
     fontWeight: "800",
-    color: "#1D4ED8",
-  },
-  roleDesc: {
-    fontSize: 11,
-    lineHeight: 15,
   },
   logoutBtn: {
     flexDirection: "row",
@@ -331,11 +256,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1,
     borderRadius: 8,
-    paddingVertical: 10,
-    marginTop: 4,
+    paddingVertical: 12,
   },
   logoutText: {
     fontSize: 13,
-    fontWeight: "600",
+    fontWeight: "700",
   },
 });

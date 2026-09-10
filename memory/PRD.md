@@ -39,3 +39,12 @@ Mobile-first civic-tech MVP for AI road-damage detection and complaint managemen
 
 ## Next Tasks
 - Await user acceptance testing feedback before further feature work (per user's credit-conscious, core-first priority).
+
+## Auth & Startup Role Routing (2026-09-10)
+- **Startup gate**: `app/index.tsx` shows a RoadLens splash while `AuthContext` checks the stored session, then redirects — authenticated → `/(tabs)`, unauthenticated → `/login`.
+- **Screens**: `login.tsx` (email/password, Forgot link, Continue with Google, Sign Up link, demo quick-access), `signup.tsx` (name/email/password/confirm), `forgot-password.tsx` (request 6-digit code → reset). Navy/white/gray, keyboard-aware.
+- **Google Sign-In**: Emergent-managed OAuth. Frontend opens `auth.emergentagent.com`, extracts `session_id`, backend `POST /api/auth/session` exchanges it via `demobackend.emergentagent.com` and mints our JWT. New Google users are created as USER.
+- **Password reset**: `POST /api/auth/forgot-password` (generic response, no enumeration) emails a 6-digit code via Emergent Resend; `POST /api/auth/reset-password` verifies the hashed, single-use, 20-min code.
+- **Roles & security**: public `register` always creates USER (role never trusted from client). `POST /api/admin/authority-users` (ADMIN only) creates AUTHORITY accounts linked to a department; admin UI is `CreateAuthorityUserModal` in Workspace. Admin account is seeded. Route protection: server-side `require_roles`; client hides the Workspace tab for USER; `(tabs)/_layout` redirects to `/login` when unauthenticated.
+- **Session**: JWT stored via secure storage; persists across restarts; logout clears it and returns to login (profile menu in header).
+- **Verified**: backend 15/15 auth/admin tests pass; frontend login (citizen/admin), signup, forgot-password, logout, route protection, and Create-Authority modal confirmed via screenshots.

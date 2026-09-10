@@ -3,8 +3,11 @@ export type UserRole = "USER" | "ADMIN" | "AUTHORITY";
 export interface PublicUser {
   id: string;
   username: string;
+  email: string;
   full_name: string;
+  name: string;
   role: UserRole;
+  status?: string;
   authority_id?: string | null;
   authority_name?: string | null;
   phone?: string | null;

@@ -49,10 +49,20 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
 export const api = {
   // Auth
-  register: (body: any) => request<any>("/auth/register", { method: "POST", body: JSON.stringify(body) }),
-  login: (body: any) => request<any>("/auth/login", { method: "POST", body: JSON.stringify(body) }),
+  register: (body: { email: string; password: string; name?: string; phone?: string }) =>
+    request<any>("/auth/register", { method: "POST", body: JSON.stringify(body) }),
+  login: (body: { email: string; password: string }) =>
+    request<any>("/auth/login", { method: "POST", body: JSON.stringify(body) }),
+  googleSession: (session_id: string) =>
+    request<any>("/auth/session", { method: "POST", body: JSON.stringify({ session_id }) }),
+  forgotPassword: (email: string) =>
+    request<any>("/auth/forgot-password", { method: "POST", body: JSON.stringify({ email }) }),
+  resetPassword: (body: { email: string; code: string; new_password: string }) =>
+    request<any>("/auth/reset-password", { method: "POST", body: JSON.stringify(body) }),
   demoLogin: (role: string) => request<any>("/auth/demo-login", { method: "POST", body: JSON.stringify({ role }) }),
   getMe: () => request<any>("/auth/me"),
+  createAuthorityUser: (body: { email: string; password: string; name: string; authority_id: string }) =>
+    request<any>("/admin/authority-users", { method: "POST", body: JSON.stringify(body) }),
 
   // AI Inspection
   analyzeImage: (body: any) => request<any>("/inspections/analyze", { method: "POST", body: JSON.stringify(body) }),

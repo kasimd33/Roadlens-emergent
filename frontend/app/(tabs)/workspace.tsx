@@ -19,6 +19,7 @@ import { StatusBadge } from "@/src/components/StatusBadge";
 import { ComplaintDetailsModal } from "@/src/components/ComplaintDetailsModal";
 import { RepairModal } from "@/src/components/RepairModal";
 import { AssignModal } from "@/src/components/AssignModal";
+import { CreateAuthorityUserModal } from "@/src/components/CreateAuthorityUserModal";
 import { Complaint, Authority } from "@/src/types";
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { Image } from "expo-image";
@@ -32,6 +33,7 @@ export default function WorkspaceScreen() {
   const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
   const [activeRepairComplaint, setActiveRepairComplaint] = useState<Complaint | null>(null);
   const [activeAssignComplaint, setActiveAssignComplaint] = useState<Complaint | null>(null);
+  const [showCreateAuthority, setShowCreateAuthority] = useState(false);
 
   // Queries
   const {
@@ -380,9 +382,19 @@ export default function WorkspaceScreen() {
 
             {/* Registered Users & Roles Table */}
             <View style={styles.adminSection}>
-              <Text style={[styles.sectionHeading, { color: colors.onSurfaceSecondary }]}>
-                Registered User Directory ({adminUsers.length})
-              </Text>
+              <View style={styles.userDirHeaderRow}>
+                <Text style={[styles.sectionHeading, { color: colors.onSurfaceSecondary }]}>
+                  Registered User Directory ({adminUsers.length})
+                </Text>
+                <Pressable
+                  testID="open-create-authority-btn"
+                  onPress={() => setShowCreateAuthority(true)}
+                  style={[styles.addAuthBtn, { backgroundColor: colors.brandPrimary }]}
+                >
+                  <Ionicons name="person-add" size={14} color="#FFFFFF" style={{ marginRight: 4 }} />
+                  <Text style={styles.addAuthBtnText}>Add Authority</Text>
+                </Pressable>
+              </View>
 
               <View style={[styles.usersCard, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]}>
                 {adminUsers.map((u: any, idx: number) => (
@@ -551,6 +563,13 @@ export default function WorkspaceScreen() {
           }}
         />
       )}
+
+      {/* Admin: Create Authority Login Account */}
+      <CreateAuthorityUserModal
+        visible={showCreateAuthority}
+        onClose={() => setShowCreateAuthority(false)}
+        authorities={authorities}
+      />
     </View>
   );
 }
@@ -558,6 +577,24 @@ export default function WorkspaceScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
+  },
+  userDirHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  addAuthBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  addAuthBtnText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "800",
   },
   scrollBody: {
     padding: 16,

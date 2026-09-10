@@ -1,20 +1,28 @@
 import React from "react";
-import { Tabs } from "expo-router";
+import { Tabs, Redirect } from "expo-router";
 import { Platform, Pressable } from "react-native";
 import { useTheme } from "@/src/theme";
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/src/api/client";
+import { useAuth } from "@/src/context/AuthContext";
 
 export default function TabsLayout() {
   const { colors } = useTheme();
+  const { user, isLoading } = useAuth();
 
   // Fetch unread notifications for badge
   const { data: notifications } = useQuery({
     queryKey: ["notifications"],
     queryFn: () => api.getNotifications(),
     refetchInterval: 10000,
+    enabled: !!user,
   });
+
+  // Route protection: no authenticated session -> back to login
+  if (!isLoading && !user) {
+    return <Redirect href="/login" />;
+  }
 
   const unreadCount = notifications?.filter((n: any) => !n.read).length || 0;
 
@@ -80,9 +88,8 @@ export default function TabsLayout() {
         name="workspace"
         options={{
           title: "Workspace",
-          tabBarButton: (props) => (
-            <Pressable {...(props as any)} testID="tab-workspace" />
-          ),
+          tabBarButton: (props) =>
+            user?.role === "USER" ? null : <Pressable {...(props as any)} testID="tab-workspace" />,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="construct-outline" size={size} color={color} />
           ),

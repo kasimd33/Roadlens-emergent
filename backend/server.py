@@ -159,6 +159,11 @@ class AuthorityUserCreate(BaseModel):
     authority_id: str
 
 
+class UpdateProfileRequest(BaseModel):
+    name: Optional[str] = None
+    phone: Optional[str] = None
+
+
 class PublicUser(BaseModel):
     id: str
     username: str
@@ -995,6 +1000,20 @@ async def demo_login(body: DemoLoginRequest):
 @api_router.get("/auth/me", response_model=PublicUser)
 async def get_me(user: Dict[str, Any] = Depends(get_current_user)):
     return format_public_user(user)
+
+
+@api_router.patch("/auth/me", response_model=PublicUser)
+async def update_me(body: UpdateProfileRequest, user: Dict[str, Any] = Depends(get_current_user)):
+    updates: Dict[str, Any] = {}
+    if body.name is not None and body.name.strip():
+        updates["name"] = body.name.strip()
+        updates["full_name"] = body.name.strip()
+    if body.phone is not None:
+        updates["phone"] = body.phone.strip()
+    if updates:
+        await db.users.update_one({"id": user["id"]}, {"$set": updates})
+    fresh = await db.users.find_one({"id": user["id"]})
+    return format_public_user(fresh)
 
 
 @api_router.post("/admin/authority-users", response_model=PublicUser, status_code=201)

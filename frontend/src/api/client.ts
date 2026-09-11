@@ -61,6 +61,8 @@ export const api = {
     request<any>("/auth/reset-password", { method: "POST", body: JSON.stringify(body) }),
   demoLogin: (role: string) => request<any>("/auth/demo-login", { method: "POST", body: JSON.stringify({ role }) }),
   getMe: () => request<any>("/auth/me"),
+  updateProfile: (body: { name?: string; phone?: string }) =>
+    request<any>("/auth/me", { method: "PATCH", body: JSON.stringify(body) }),
   createAuthorityUser: (body: { email: string; password: string; name: string; authority_id: string }) =>
     request<any>("/admin/authority-users", { method: "POST", body: JSON.stringify(body) }),
 

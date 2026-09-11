@@ -20,6 +20,7 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
   resetPassword: (email: string, code: string, newPassword: string) => Promise<void>;
+  updateProfile: (name: string, phone: string) => Promise<void>;
   demoLogin: (role: UserRole) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -35,6 +36,7 @@ const AuthContext = createContext<AuthContextType>({
   signInWithGoogle: async () => {},
   forgotPassword: async () => {},
   resetPassword: async () => {},
+  updateProfile: async () => {},
   demoLogin: async () => {},
   logout: async () => {},
   refreshUser: async () => {},
@@ -139,6 +141,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await api.resetPassword({ email: email.trim().toLowerCase(), code: code.trim(), new_password: newPassword });
   };
 
+  const updateProfile = async (name: string, phone: string) => {
+    const updated = await api.updateProfile({ name: name.trim(), phone: phone.trim() });
+    setUser(updated);
+  };
+
   const signInWithGoogle = async () => {
     const redirectUrl =
       Platform.OS === "web" && typeof window !== "undefined"
@@ -199,6 +206,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signInWithGoogle,
         forgotPassword,
         resetPassword,
+        updateProfile,
         demoLogin,
         logout,
         refreshUser,

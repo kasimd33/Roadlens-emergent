@@ -20,6 +20,7 @@ import { ComplaintDetailsModal } from "@/src/components/ComplaintDetailsModal";
 import { RepairModal } from "@/src/components/RepairModal";
 import { AssignModal } from "@/src/components/AssignModal";
 import { CreateAuthorityUserModal } from "@/src/components/CreateAuthorityUserModal";
+import { CreateAuthorityDepartmentModal } from "@/src/components/CreateAuthorityDepartmentModal";
 import { Complaint, Authority } from "@/src/types";
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { Image } from "expo-image";
@@ -34,6 +35,18 @@ export default function WorkspaceScreen() {
   const [activeRepairComplaint, setActiveRepairComplaint] = useState<Complaint | null>(null);
   const [activeAssignComplaint, setActiveAssignComplaint] = useState<Complaint | null>(null);
   const [showCreateAuthority, setShowCreateAuthority] = useState(false);
+  const [showCreateDept, setShowCreateDept] = useState(false);
+  const [deptError, setDeptError] = useState<string | null>(null);
+
+  const deleteAuthorityMutation = useMutation({
+    mutationFn: (id: string) => api.deleteAuthority(id),
+    onSuccess: () => {
+      setDeptError(null);
+      queryClient.invalidateQueries({ queryKey: ["authorities"] });
+      queryClient.invalidateQueries({ queryKey: ["adminStats"] });
+    },
+    onError: (e: any) => setDeptError(e?.message || "Could not remove department."),
+  });
 
   // Queries
   const {
@@ -349,9 +362,25 @@ export default function WorkspaceScreen() {
 
             {/* Demo Authorities Directory */}
             <View style={styles.adminSection}>
-              <Text style={[styles.sectionHeading, { color: colors.onSurfaceSecondary }]}>
-                Municipal Authority Divisions ({authorities.length})
-              </Text>
+              <View style={styles.userDirHeaderRow}>
+                <Text style={[styles.sectionHeading, { color: colors.onSurfaceSecondary }]}>
+                  Municipal Authority Divisions ({authorities.length})
+                </Text>
+                <Pressable
+                  testID="open-create-dept-btn"
+                  onPress={() => setShowCreateDept(true)}
+                  style={[styles.addAuthBtn, { backgroundColor: colors.brandPrimary }]}
+                >
+                  <Ionicons name="add" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />
+                  <Text style={styles.addAuthBtnText}>Add Department</Text>
+                </Pressable>
+              </View>
+
+              {deptError && (
+                <Text testID="dept-error-banner" style={[styles.deptErrorBanner, { color: colors.error, backgroundColor: "#FEE2E2" }]}>
+                  {deptError}
+                </Text>
+              )}
 
               <View style={styles.authoritiesGrid}>
                 {authorities.map((auth: Authority) => (
@@ -363,6 +392,14 @@ export default function WorkspaceScreen() {
                     <View style={styles.dirCardHeader}>
                       <Ionicons name="business" size={18} color={colors.brandPrimary} />
                       <Text style={[styles.dirCode, { color: colors.brandPrimary }]}>{auth.code}</Text>
+                      <Pressable
+                        testID={`delete-authority-btn-${auth.id}`}
+                        onPress={() => deleteAuthorityMutation.mutate(auth.id)}
+                        hitSlop={8}
+                        style={styles.deleteAuthBtn}
+                      >
+                        <Ionicons name="trash-outline" size={16} color={colors.error} />
+                      </Pressable>
                     </View>
                     <Text style={[styles.dirName, { color: colors.onSurfaceSecondary }]}>{auth.name}</Text>
                     <Text style={[styles.dirZone, { color: colors.muted }]}>Zone: {auth.zone}</Text>
@@ -570,6 +607,12 @@ export default function WorkspaceScreen() {
         onClose={() => setShowCreateAuthority(false)}
         authorities={authorities}
       />
+
+      {/* Admin: Create Authority Department */}
+      <CreateAuthorityDepartmentModal
+        visible={showCreateDept}
+        onClose={() => setShowCreateDept(false)}
+      />
     </View>
   );
 }
@@ -595,6 +638,18 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 12,
     fontWeight: "800",
+  },
+  deleteAuthBtn: {
+    marginLeft: "auto",
+    padding: 2,
+  },
+  deptErrorBanner: {
+    fontSize: 12,
+    fontWeight: "600",
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 10,
+    overflow: "hidden",
   },
   scrollBody: {
     padding: 16,

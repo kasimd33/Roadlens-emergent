@@ -87,6 +87,9 @@ export const api = {
 
   // Authorities & Governance
   getAuthorities: () => request<any[]>("/authorities"),
+  createAuthority: (body: { name: string; zone: string; coverage_area?: string; contact_email?: string; contact_phone?: string }) =>
+    request<any>("/authorities", { method: "POST", body: JSON.stringify(body) }),
+  deleteAuthority: (id: string) => request<any>(`/authorities/${id}`, { method: "DELETE" }),
   getAdminStats: () => request<any>("/admin/stats"),
   getAdminUsers: () => request<any[]>("/admin/users"),
 

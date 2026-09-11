@@ -253,6 +253,14 @@ class AuthorityModel(BaseModel):
     created_at: str
 
 
+class AuthorityCreate(BaseModel):
+    name: str
+    zone: str
+    coverage_area: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+
+
 # --- Helper Functions ---
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
@@ -1254,7 +1262,7 @@ async def create_complaint(
         )
 
     # Find authorities for auto-assignment
-    authorities = await db.authorities.find().to_list(100)
+    authorities = await db.authorities.find({"deleted": {"$ne": True}}).to_list(100)
     matched_auth = find_matching_authority(body.latitude, body.longitude, body.location_name, authorities)
 
     status_val = ComplaintStatus.ASSIGNED.value if matched_auth else ComplaintStatus.SUBMITTED.value
@@ -1633,11 +1641,72 @@ async def assign_complaint_authority(
 # ==============================================================================
 @api_router.get("/authorities", response_model=List[AuthorityModel])
 async def list_authorities():
-    cursor = db.authorities.find().sort("name", ASCENDING)
+    cursor = db.authorities.find({"deleted": {"$ne": True}}).sort("name", ASCENDING)
     authorities = await cursor.to_list(100)
     for a in authorities:
         a.pop("_id", None)
     return authorities
+
+
+@api_router.post("/authorities", response_model=AuthorityModel, status_code=201)
+async def create_authority(
+    body: AuthorityCreate,
+    current_user: Dict[str, Any] = Depends(require_roles(UserRole.ADMIN))
+):
+    """Admin-only: create a new authority department with a name and coverage zone."""
+    name = body.name.strip()
+    zone = body.zone.strip()
+    if not name or not zone:
+        raise HTTPException(status_code=400, detail="Department name and zone are required")
+
+    # Generate a stable id + human-readable code from the name
+    slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")[:24] or uuid.uuid4().hex[:8]
+    authority_id = f"auth-{slug}-{uuid.uuid4().hex[:4]}"
+    code = "AUTH-" + re.sub(r"[^A-Z0-9]+", "", name.upper())[:10]
+
+    doc = {
+        "id": authority_id,
+        "code": code or f"AUTH-{uuid.uuid4().hex[:5].upper()}",
+        "name": name,
+        "zone": zone,
+        "coverage_area": (body.coverage_area or zone).strip(),
+        "contact_email": (body.contact_email or "").strip(),
+        "contact_phone": (body.contact_phone or "").strip(),
+        "active_complaints_count": 0,
+        "resolved_count": 0,
+        "deleted": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.authorities.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+
+@api_router.delete("/authorities/{authority_id}")
+async def delete_authority(
+    authority_id: str,
+    current_user: Dict[str, Any] = Depends(require_roles(UserRole.ADMIN))
+):
+    """Admin-only: remove an authority department (soft delete). Blocked if it has active complaints."""
+    authority = await db.authorities.find_one({"id": authority_id, "deleted": {"$ne": True}})
+    if not authority:
+        raise HTTPException(status_code=404, detail="Authority department not found")
+
+    active = await db.complaints.count_documents({
+        "assigned_authority_id": authority_id,
+        "status": {"$nin": [ComplaintStatus.RESOLVED.value, ComplaintStatus.CLOSED.value]}
+    })
+    if active > 0:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Cannot remove: {active} active complaint(s) are still assigned. Reassign or resolve them first."
+        )
+
+    await db.authorities.update_one(
+        {"id": authority_id},
+        {"$set": {"deleted": True, "deleted_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    return {"message": "Authority department removed", "id": authority_id}
 
 
 @api_router.get("/admin/stats")

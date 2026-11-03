@@ -1,0 +1,59 @@
+{
+  "expo": {
+    "name": "RoadLens",
+    "slug": "roadlens",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "roadlens",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.emergent.roadlensdemo.z36njn",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Capture road damage photos for AI analysis",
+        "NSPhotoLibraryUsageDescription": "Upload road damage images from gallery",
+        "NSLocationWhenInUseUsageDescription": "Pinpoint road damage GPS coordinates"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#1E3A8A"
+      },
+      "package": "com.emergent.roadlensdemo.z36njn",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-image.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#1E3A8A"
+        }
+      ],
+      "expo-font",
+      "expo-image",
+      "expo-secure-store",
+      "expo-web-browser",
+      "expo-status-bar",
+      "@react-native-vector-icons/ionicons"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

@@ -1,0 +1,90 @@
+const API_BASE = `${import.meta.env.VITE_BACKEND_URL || "http://localhost:8001"}/api`;
+const TOKEN_KEY = "roadlens_auth_token";
+
+export function saveAuthToken(token: string) {
+  localStorage.setItem(TOKEN_KEY, token);
+}
+export function getAuthToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY);
+}
+export function clearAuthToken() {
+  localStorage.removeItem(TOKEN_KEY);
+}
+
+async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const token = getAuthToken();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(options.headers as Record<string, string>),
+  };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const url = `${API_BASE}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
+  const response = await fetch(url, { ...options, headers });
+
+  if (!response.ok) {
+    let errorDetail = "An error occurred";
+    try {
+      const errJson = await response.json();
+      errorDetail = errJson.detail || errJson.message || JSON.stringify(errJson);
+    } catch {
+      errorDetail = await response.text();
+    }
+    throw new Error(errorDetail || `HTTP ${response.status}`);
+  }
+  return response.json() as Promise<T>;
+}
+
+export const api = {
+  register: (body: { email: string; password: string; name?: string; phone?: string }) =>
+    request<any>("/auth/register", { method: "POST", body: JSON.stringify(body) }),
+  login: (body: { email: string; password: string }) =>
+    request<any>("/auth/login", { method: "POST", body: JSON.stringify(body) }),
+  googleSession: (session_id: string) =>
+    request<any>("/auth/session", { method: "POST", body: JSON.stringify({ session_id }) }),
+  forgotPassword: (email: string) =>
+    request<any>("/auth/forgot-password", { method: "POST", body: JSON.stringify({ email }) }),
+  resetPassword: (body: { email: string; code: string; new_password: string }) =>
+    request<any>("/auth/reset-password", { method: "POST", body: JSON.stringify(body) }),
+  demoLogin: (role: string) =>
+    request<any>("/auth/demo-login", { method: "POST", body: JSON.stringify({ role }) }),
+  getMe: () => request<any>("/auth/me"),
+  updateProfile: (body: { name?: string; phone?: string }) =>
+    request<any>("/auth/me", { method: "PATCH", body: JSON.stringify(body) }),
+  createAuthorityUser: (body: { email: string; password: string; name: string; authority_id: string }) =>
+    request<any>("/admin/authority-users", { method: "POST", body: JSON.stringify(body) }),
+
+  analyzeImage: (body: any) =>
+    request<any>("/inspections/analyze", { method: "POST", body: JSON.stringify(body) }),
+
+  getComplaints: (params?: { status?: string; severity?: string; mine_only?: boolean; assigned_to_me?: boolean; search?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.status) q.append("status", params.status);
+    if (params?.severity) q.append("severity", params.severity);
+    if (params?.mine_only) q.append("mine_only", "true");
+    if (params?.assigned_to_me) q.append("assigned_to_me", "true");
+    if (params?.search) q.append("search", params.search);
+    const qs = q.toString();
+    return request<any[]>(`/complaints${qs ? `?${qs}` : ""}`);
+  },
+  getComplaint: (id: string) => request<any>(`/complaints/${id}`),
+  createComplaint: (body: any) =>
+    request<any>("/complaints", { method: "POST", body: JSON.stringify(body) }),
+  updateComplaintStatus: (id: string, body: any) =>
+    request<any>(`/complaints/${id}/status`, { method: "PATCH", body: JSON.stringify(body) }),
+  assignComplaint: (id: string, body: any) =>
+    request<any>(`/complaints/${id}/assign`, { method: "POST", body: JSON.stringify(body) }),
+
+  getAuthorities: () => request<any[]>("/authorities"),
+  createAuthority: (body: { name: string; zone: string; coverage_area?: string; contact_email?: string; contact_phone?: string }) =>
+    request<any>("/authorities", { method: "POST", body: JSON.stringify(body) }),
+  deleteAuthority: (id: string) => request<any>(`/authorities/${id}`, { method: "DELETE" }),
+  getAdminStats: () => request<any>("/admin/stats"),
+  getAdminUsers: () => request<any[]>("/admin/users"),
+
+  getNotifications: () => request<any[]>("/notifications"),
+  markNotificationRead: (id: string) =>
+    request<any>(`/notifications/${id}/read`, { method: "PATCH" }),
+  markAllNotificationsRead: () =>
+    request<any>("/notifications/read-all", { method: "POST" }),
+};

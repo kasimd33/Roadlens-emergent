@@ -1,0 +1,61 @@
+{
+  "summary": "Tested new RoadLens auth + role-routing. Backend: 15/15 pytest cases pass — register (server ignores client-provided role), login, /auth/me, forgot-password (generic 202, no enumeration), reset-password 400 on invalid code, admin-only /api/admin/authority-users (200 create + login roundtrip; 404 invalid authority_id; 409 duplicate; 403 for USER; 401 without token), plus complaint lifecycle regression (AI-detected pothole allows complaint; clean-image inspection blocks complaint with 400). Frontend: unauthenticated screens (Login, Sign Up validation with signup-error, Forgot Password reset step with forgot-info, Google buttons) all work. BLOCKER: every authenticated flow crashes with ErrorBoundary 'Cannot use `href` and `tabBarButton` together' due to the Workspace tab in /app/frontend/app/(tabs)/_layout.tsx using both `href: user?.role === 'USER' ? null : undefined` and `tabBarButton`. Because of this, demo-user/demo-admin login landing, Workspace-tab visibility per role, Add-Authority modal, logout via profile menu, and persistent-session-after-reload could not be verified in UI.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "(tabs)/_layout.tsx – Workspace Tabs.Screen",
+        "issue": "Uses both `href` (conditional null for USER) and `tabBarButton` on the same Tabs.Screen. Expo Router rejects this combo, so the entire tab shell crashes into ErrorBoundary after any successful login. Reference: /app/frontend/app/(tabs)/_layout.tsx:86-98.",
+        "testID": "tab-workspace",
+        "priority": "CRITICAL"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Post-login navigation (Citizen, Authority, Admin)",
+        "issue": "AuthContext successfully stores the token from /api/auth/demo-login and /api/auth/login, but rendering (tabs)/_layout.tsx immediately throws, so users never see Dashboard/Workspace. Blocks demo-user-btn, demo-admin-btn, open-create-authority-btn, profile-menu-btn -> logout-btn, and persistent-session-reload verifications.",
+        "affected_testIDs": ["demo-user-btn", "demo-admin-btn", "open-create-authority-btn", "profile-menu-btn", "logout-btn", "tab-workspace", "tab-dashboard"]
+      }
+    ],
+    "design_issues": [],
+    "react_native_issues": [
+      {
+        "component": "Tabs.Screen (expo-router)",
+        "issue": "`href` + `tabBarButton` combined on the workspace tab is invalid in current expo-router. To hide a tab conditionally, either (a) drop `tabBarButton` on that screen and keep `href: null` for USER, or (b) keep `tabBarButton` and instead make it render null for USER (return null from tabBarButton when role==='USER'), or (c) omit `<Tabs.Screen name=\"workspace\"/>` entirely for USER role. Reference: /app/frontend/app/(tabs)/_layout.tsx:86-98."
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_auth_and_admin.py",
+    "/app/test_reports/pytest/auth_results.xml"
+  ],
+  "action_items": [
+    "URGENT: Fix /app/frontend/app/(tabs)/_layout.tsx so Workspace tab does not combine `href` and `tabBarButton`. Recommended: remove `href` and render the tabBarButton to return null when user.role === 'USER'. This will unblock all authenticated UI flows.",
+    "After the tab-layout fix, re-run frontend tests covering: demo-user-btn -> Workspace tab hidden; demo-admin-btn -> Workspace tab visible and open-create-authority-btn opens the CreateAuthorityUserModal; profile-menu-btn -> logout-btn returns to Login; app reload keeps session (persistent login).",
+    "Consider removing legacy backend fallback defaults for MONGO_URL/DB_NAME/JWT_SECRET so misconfiguration fails fast (per environment contract).",
+    "Existing /app/backend/tests/test_roadlens_api.py still calls /api/auth/login with `username` field (old contract). Update or delete this file to keep regression suite green under the new email-based login schema."
+  ],
+  "critical_code_review_comments": [
+    "server.py public /api/auth/register correctly forces role=USER even if the client sends role=ADMIN (verified by test) — good security posture.",
+    "/api/auth/forgot-password always returns 202 with a single generic message regardless of whether the email exists — no account enumeration; verified.",
+    "/api/admin/authority-users is properly guarded by require_roles(ADMIN); USER gets 403 and unauthenticated gets 401; duplicate email 409 and unknown authority_id 404 all verified.",
+    "Workspace-tab role-hiding logic mixes two mutually-exclusive expo-router APIs, causing a runtime crash that defeats the client-side role protection entirely."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_auth_and_admin.py",
+    "/app/test_reports/iteration_2.json",
+    "/app/test_reports/pytest/auth_results.xml"
+  ],
+  "success_rate": {
+    "backend": "100% (15/15 auth + admin + regression pytest cases)",
+    "frontend": "Unauth screens 100% (Login/Signup/Forgot); authenticated flows 0% due to Tabs.Screen crash blocker"
+  },
+  "seed_data_creation": "Tests created several TEST_-prefixed users (USER and AUTHORITY) via /api/auth/register and /api/admin/authority-users. No cleanup endpoint available; these remain in the users collection with the TEST_ prefix for traceability.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Backend auth/admin/regression suite is green. After the (tabs)/_layout.tsx fix is applied, focus the next UI pass on: (1) demo-user-btn login -> confirm Workspace tab is NOT rendered while Dashboard/Inspect/Complaints/Alerts are; (2) demo-admin-btn login -> Workspace tab visible, open-create-authority-btn opens CreateAuthorityUserModal and its inputs render; (3) profile-menu-btn then logout-btn lands back on login-submit-button; (4) reload after login keeps the user in tabs (persistent session). Google buttons should only be checked for presence — do NOT complete OAuth. Reset-code path only validates the 400-invalid branch.",
+  "rca_of_issue": "Reproduction: open the app, tap any of the demo login buttons (demo-user-btn/demo-authority-btn/demo-admin-btn), and the ErrorBoundary immediately renders 'Something went wrong / Cannot use `href` and `tabBarButton` together.' Root cause: /app/frontend/app/(tabs)/_layout.tsx sets `href: user?.role === 'USER' ? null : undefined` and simultaneously supplies a custom `tabBarButton` on the Workspace `Tabs.Screen`. Current expo-router treats these as mutually exclusive options and throws during tab tree resolution. Mitigation: keep `tabBarButton` and instead conditionally return null from it when role==='USER' (or drop `tabBarButton` on that screen if the tab-workspace testID is not required)."
+}

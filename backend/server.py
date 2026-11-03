@@ -28,7 +28,14 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
-from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
+# Optional: Emergent-platform LLM client (not on public PyPI — only usable inside Emergent).
+# Real production analysis uses GEMINI_API_KEY below; this stays import-guarded so the
+# backend deploys anywhere without the package installed.
+try:
+    from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
+    HAS_EMERGENT_LLM = True
+except ImportError:
+    HAS_EMERGENT_LLM = False
 
 # Load environment variables
 ROOT_DIR = Path(__file__).parent
@@ -1232,7 +1239,7 @@ async def analyze_road_damage(
     )
 
     ai_data = None
-    if EMERGENT_LLM_KEY:
+    if EMERGENT_LLM_KEY and HAS_EMERGENT_LLM:
         try:
             chat = LlmChat(
                 api_key=EMERGENT_LLM_KEY,

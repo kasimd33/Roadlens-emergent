@@ -56,6 +56,43 @@ Point the frontend at the backend with `VITE_BACKEND_URL` in `web-frontend/.env.
 | Authority | authority@roadlens.gov | Authority@123 |
 | Admin | admin@roadlens.gov | Admin@123 |
 
+## Deploying to production
+
+The stack deploys as three free-tier services:
+
+**1. MongoDB Atlas** (database)
+
+Create a free M0 cluster at [mongodb.com/atlas](https://www.mongodb.com/atlas), add a
+database user, and allow network access from `0.0.0.0/0` (Render's egress IPs are dynamic).
+Copy the SRV connection string — this is your `MONGO_URL`.
+
+**2. Render** (backend API)
+
+The repo includes a Render blueprint (`render.yaml`). In the Render dashboard:
+**New → Blueprint** → select this repo. Fill in the prompted secret vars:
+
+| Var | Value |
+|---|---|
+| `MONGO_URL` | your Atlas SRV connection string |
+| `GEMINI_API_KEY` | Google AI Studio key |
+| `CORS_ORIGINS` | your frontend URL (set after step 3, e.g. `https://roadlens.vercel.app`) |
+
+`JWT_SECRET` is auto-generated; `ALLOW_DEMO_DATA` stays unset (defaults to `false` — no
+demo accounts or quick-demo buttons in production).
+
+**3. Vercel** (web frontend)
+
+Import the repo at [vercel.com](https://vercel.com), set the **Root Directory** to
+`web-frontend` (Vite is auto-detected), and set:
+
+| Var | Value |
+|---|---|
+| `VITE_BACKEND_URL` | your Render URL, e.g. `https://roadlens-api.onrender.com` |
+
+Then go back to Render and set `CORS_ORIGINS` to your Vercel URL so the browser can
+call the API. No demo accounts exist in production — register a citizen account from
+the signup page; authority/admin accounts are created by an Admin after logging in.
+
 ## Security notes
 
 - API keys live in `backend/.env` (gitignored) — never commit keys

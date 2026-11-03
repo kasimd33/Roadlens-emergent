@@ -43,9 +43,19 @@ logger = logging.getLogger("roadlens")
 # Config
 MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
 DB_NAME = os.getenv("DB_NAME", "roadlens_db")
-JWT_SECRET = os.getenv("JWT_SECRET", "c9f8a3d5829147efb1263c94821a73d5e0a6b18c72f53491e4b8592c73081e64")
+# Production must set JWT_SECRET; if absent we generate an ephemeral one so the
+# committed default is never a usable production signing key.
+JWT_SECRET = os.getenv("JWT_SECRET", "")
+if not JWT_SECRET:
+    JWT_SECRET = secrets.token_hex(32)
+    logger.warning(
+        "JWT_SECRET env not set - generated an ephemeral secret (tokens reset on restart). "
+        "Set JWT_SECRET in production!"
+    )
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 ACCESS_TOKEN_MINUTES = int(os.getenv("ACCESS_TOKEN_MINUTES", "1440"))
+# Demo seeding + quick demo login are gated: set ALLOW_DEMO_DATA=true only in dev/demo envs.
+ALLOW_DEMO_DATA = os.getenv("ALLOW_DEMO_DATA", "").strip().lower() in ("1", "true", "yes")
 EMERGENT_LLM_KEY = os.getenv("EMERGENT_LLM_KEY", "")
 # Optional Google AI Studio (Gemini) vision — free tier keys from aistudio.google.com
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
@@ -55,6 +65,9 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
 OPENAI_VISION_MODEL = os.getenv("OPENAI_VISION_MODEL", "gpt-4o-mini")
 RESET_CODE_MINUTES = int(os.getenv("RESET_CODE_MINUTES", "20"))
+# Comma-separated allowed browser origins for production (e.g. https://app.example.com).
+# Empty/unset => allow all (fine for local dev).
+CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()]
 
 # Emergent managed email (Resend). Base URL is a constant so it survives deployment.
 EMAIL_BASE_URL = "https://integrations.emergentagent.com"
@@ -527,7 +540,11 @@ async def startup_event():
     except Exception as e:
         logger.warning(f"User backfill note: {e}")
 
-    # Seed Demo Authorities (Indian municipal bodies)
+    # Seed Demo Authorities (Indian municipal bodies) - demo environments only
+    if not ALLOW_DEMO_DATA:
+        logger.info("ALLOW_DEMO_DATA not set - skipping demo seeding (production mode).")
+        return
+
     authorities_data = [
         {
             "id": "auth-downtown",
@@ -1000,6 +1017,8 @@ async def reset_password(body: ResetPasswordRequest):
 
 @api_router.post("/auth/demo-login", response_model=TokenResponse)
 async def demo_login(body: DemoLoginRequest):
+    if not ALLOW_DEMO_DATA:
+        raise HTTPException(status_code=403, detail="Demo access is disabled in this environment")
     role_map = {
         UserRole.USER: "citizen@roadlens.gov",
         UserRole.AUTHORITY: "authority@roadlens.gov",
@@ -2001,7 +2020,7 @@ app.include_router(api_router)
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS or ["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )

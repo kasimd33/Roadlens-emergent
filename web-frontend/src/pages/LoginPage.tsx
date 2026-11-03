@@ -7,6 +7,8 @@ import type { UserRole } from "../types";
 export const LoginPage: React.FC = () => {
   const { login, signInWithGoogle, demoLogin } = useAuth();
   const navigate = useNavigate();
+  // Quick demo access: dev/preview builds only (plan.md Option A) — hidden in production builds
+  const showDemoAccess = import.meta.env.DEV;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -158,7 +160,8 @@ export const LoginPage: React.FC = () => {
           </p>
         </form>
 
-        {/* Demo quick access */}
+        {/* Demo quick access (dev/preview only) */}
+        {showDemoAccess && (
         <div className="mt-8 text-center">
           <p className="text-blue-300 text-[11px] font-bold uppercase tracking-wider mb-3">
             Quick demo access
@@ -187,6 +190,7 @@ export const LoginPage: React.FC = () => {
             </button>
           </div>
         </div>
+        )}
       </div>
     </div>
   );

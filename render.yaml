@@ -17,5 +17,7 @@ services:
         generateValue: true  # Render generates a strong random secret
       - key: CORS_ORIGINS
         sync: false          # your frontend URL, e.g. https://roadlens.vercel.app
+      - key: ALLOW_DEMO_DATA
+        value: "true"        # seed demo users + Ballari divisions; set false for real production
       - key: PYTHON_VERSION
         value: 3.11.7

@@ -1501,12 +1501,15 @@ def find_matching_authority(lat: float, lng: float, location_name: str, authorit
       1. Same location name: word-boundary locality match against coverage_area
          (e.g. "Near Hebbal Flyover, Bengaluru" -> authority covering Hebbal).
       2. Zone direction keywords (central/north/south/east/west) shared by the
-         location name and the authority's zone.
+         location name and the authority's zone. Only fires when the location
+         explicitly mentions the city, so "North Delhi" never matches
+         "North Bengaluru".
       3. Nearby towns: nearest authority by haversine distance from the damage
-         coordinates to the authority's HQ coordinates (within NEARBY_RADIUS_KM).
-      4. Coordinates present but far from every HQ -> nearest authority anyway
-         (closest jurisdiction is still the best hand-off).
-      5. No coordinates and no text match -> None (left UNASSIGNED for Admin).
+         coordinates to its HQ coordinates - but only within
+         NEARBY_RADIUS_KM, so damage reported from another city is never
+         handed to a far-away division.
+      4. No text match, or damage outside every jurisdiction -> None (left
+         UNASSIGNED for Admin, who can create an authority for that area).
     """
     authorities_list = [a for a in authorities_list if not a.get("deleted")]
     if not authorities_list:
@@ -1521,31 +1524,34 @@ def find_matching_authority(lat: float, lng: float, location_name: str, authorit
         if loc_tokens & auth_tokens:
             return auth
 
-    # Tier 2: zone direction keyword match
-    for auth in authorities_list:
-        zone_lower = auth.get("zone", "").lower()
-        for direction in ("central", "north", "south", "east", "west"):
-            if direction in loc_lower and direction in zone_lower:
-                return auth
+    # Tier 2: zone direction keyword match (city must be named in the location)
+    mentions_city = any(city in loc_lower for city in ("bengaluru", "bangalore"))
+    if mentions_city:
+        for auth in authorities_list:
+            zone_lower = auth.get("zone", "").lower()
+            for direction in ("central", "north", "south", "east", "west"):
+                if direction in loc_lower and direction in zone_lower:
+                    return auth
 
-    # Tier 3-4: proximity to authority HQ coordinates
+    # Tier 3: proximity to authority HQ coordinates, within jurisdiction
     def hq_coords(auth: Dict[str, Any]) -> Optional[tuple]:
         hq_lat, hq_lng = auth.get("hq_latitude"), auth.get("hq_longitude")
         if isinstance(hq_lat, (int, float)) and isinstance(hq_lng, (int, float)):
             return (hq_lat, hq_lng)
         return None
 
-    NEARBY_RADIUS_KM = 25.0
+    NEARBY_RADIUS_KM = 40.0  # ~Bengaluru metro edge; other cities are farther
     if lat is not None and lng is not None and (abs(lat) > 0.01 or abs(lng) > 0.01):
         with_coords = [(auth, hq_coords(auth)) for auth in authorities_list]
         with_coords = [(auth, hq) for auth, hq in with_coords if hq is not None]
         if with_coords:
             distances = [(haversine_distance_km(lat, lng, hq[0], hq[1]), auth) for auth, hq in with_coords]
             nearest_distance, nearest_auth = min(distances, key=lambda d: d[0])
-            # Tier 4: nearest authority regardless of radius (best jurisdiction)
-            return nearest_auth
+            if nearest_distance <= NEARBY_RADIUS_KM:
+                return nearest_auth
+            # Outside every authority's jurisdiction - leave for Admin
 
-    # Tier 5: cannot localise the damage - leave for Admin manual assignment
+    # Tier 4: cannot localise the damage to a jurisdiction - Admin assigns manually
     return None
 
 

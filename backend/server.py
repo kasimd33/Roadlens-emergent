@@ -521,6 +521,94 @@ app = FastAPI(title="RoadLens AI Civic Inspection API")
 api_router = APIRouter(prefix="/api")
 
 
+# --- One-time migration: rewrite pre-Ballari (Bengaluru) demo data ---
+# Databases seeded before the Ballari switch keep the old divisions/users/
+# complaints because the startup seeds use $setOnInsert. The rewrite runs at
+# startup (only when legacy "Bengaluru" text is still present) and is
+# idempotent, so it is safe across restarts and redeploys.
+BALLARI_TEXT_FIXES = {
+    # Old division coverage areas -> Ballari localities
+    "MG Road, Residency Rd, Shivajinagar, Trinity Circle": "Gandhi Nagar, Cowl Bazaar, Brucepeta, Court Circle",
+    "Hebbal, Yelahanka, BEL Road, Airport Corridor (NH-44)": "Kudithini, Moka, Hospet Rd, NH-50 Corridor",
+    "Jayanagar, BTM Layout, Bommasandra, Electronic City": "Kappagal, Allipuram, BSS Hill, Industrial Estate",
+    "Whitefield, Marathahalli, KR Puram, Old Airport Rd": "Siruguppa Rd, Vaddaragatti, Bukkasagara, Moka Rd",
+    # Seeded demo locations / landmarks / titles
+    "MG Road & Trinity Junction, Central Bengaluru": "Gandhi Nagar Main Road & Court Circle, Central Ballari",
+    "MG Road & Trinity Junction.": "Gandhi Nagar Main Road & Court Circle.",
+    "Ballari Road (NH-44), Hebbal Flyover Stretch": "Hospet Road (NH-50), Kudithini Stretch",
+    "Near Hebbal Flyover": "Near Kudithini Junction",
+    "Near Trinity Metro Station": "Near Court Circle Junction",
+    "Electronic City Phase 1 Access Road": "Kappagal Road Industrial Area Access Road",
+    "Pothole on MG Road": "Pothole on Gandhi Nagar Main Road",
+    "Crack on Ballari Road (NH-44)": "Crack on Hospet Road (NH-50)",
+    "MG Road Pothole": "Gandhi Nagar Main Road Pothole",
+    "Ballari Road Crack": "Hospet Road Crack",
+    "the Trinity Junction": "the Court Circle junction",
+    "Electronic City access road": "Kappagal Road access stretch",
+    # Bengaluru STD-code phone numbers -> Ballari (08392)
+    "+91 80 2234 5678": "+91 8392 223456",
+    "+91 80 2345 6789": "+91 8392 234567",
+    "+91 80 2456 7890": "+91 8392 245678",
+    "+91 80 2567 8901": "+91 8392 256789",
+}
+
+BALLARI_HQ_COORDS = {
+    "auth-downtown": (15.1394, 76.9214),
+    "auth-north": (15.2050, 76.8930),
+    "auth-south": (15.1050, 76.9100),
+    "auth-suburban": (15.1600, 76.9800),
+}
+
+BALLARI_COMPLAINT_COORDS = {
+    "comp-seed-1": (15.1390, 76.9210),
+    "comp-seed-2": (15.2050, 76.8930),
+    "comp-seed-3": (15.1050, 76.9100),
+}
+
+
+def _ballari_text(value):
+    """Recursively apply Ballari text fixes inside strings/lists/dicts."""
+    if isinstance(value, str):
+        for old, new in BALLARI_TEXT_FIXES.items():
+            if old in value:
+                value = value.replace(old, new)
+        return value.replace("Bengaluru", "Ballari")
+    if isinstance(value, list):
+        return [_ballari_text(v) for v in value]
+    if isinstance(value, dict):
+        return {k: _ballari_text(v) for k, v in value.items()}
+    return value
+
+
+async def migrate_bengaluru_demo_data():
+    logger.info("Migrating legacy Bengaluru demo data to Ballari...")
+    text_fields = {
+        "authorities": ("name", "zone", "coverage_area", "contact_phone"),
+        "users": ("authority_name", "full_name", "name"),
+        "complaints": ("title", "description", "location_name", "landmark",
+                       "assigned_authority_name", "status_history", "repair_evidence",
+                       "user_name"),
+        "notifications": ("title", "message"),
+    }
+    for coll_name, fields in text_fields.items():
+        coll = db[coll_name]
+        async for doc in coll.find({}):
+            rewritten = {k: _ballari_text(doc[k]) for k in fields if k in doc}
+            updates = {k: v for k, v in rewritten.items() if v != doc.get(k)}
+            if updates:
+                await coll.update_one({"_id": doc["_id"]}, {"$set": updates})
+
+    for auth_id, (lat, lng) in BALLARI_HQ_COORDS.items():
+        await db.authorities.update_one(
+            {"id": auth_id}, {"$set": {"hq_latitude": lat, "hq_longitude": lng}}
+        )
+    for comp_id, (lat, lng) in BALLARI_COMPLAINT_COORDS.items():
+        await db.complaints.update_one(
+            {"id": comp_id}, {"$set": {"latitude": lat, "longitude": lng}}
+        )
+    logger.info("Bengaluru -> Ballari migration complete.")
+
+
 @app.on_event("startup")
 async def startup_event():
     logger.info("Initializing RoadLens Database and Indexes...")
@@ -551,6 +639,15 @@ async def startup_event():
             )
     except Exception as e:
         logger.warning(f"User backfill note: {e}")
+
+    # One-time rewrite of legacy Bengaluru demo data (databases seeded before
+    # the Ballari switch). Cheap no-op once migrated - it only runs while old
+    # "Bengaluru" division text is still present.
+    try:
+        if await db.authorities.find_one({"name": {"$regex": "Bengaluru"}}):
+            await migrate_bengaluru_demo_data()
+    except Exception as e:
+        logger.warning(f"Bengaluru -> Ballari migration note: {e}")
 
     # Seed Demo Authorities (Indian municipal bodies) - demo environments only
     if not ALLOW_DEMO_DATA:

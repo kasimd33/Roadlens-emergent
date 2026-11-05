@@ -1555,6 +1555,54 @@ def find_matching_authority(lat: float, lng: float, location_name: str, authorit
     return None
 
 
+async def auto_provision_authority(location_name: str, lat: Optional[float], lng: Optional[float]) -> Optional[Dict[str, Any]]:
+    """Create (or reuse) an authority for a location outside existing jurisdictions.
+
+    Derives the city/area from the complaint's location name ("Sayyaji Rao
+    Road, Mysuru" -> "Mysuru"), provisions a division covering it, and pins
+    its HQ to the complaint's coordinates. Future complaints sharing any
+    locality token (including the city name) reuse this authority instead of
+    spawning duplicates. Flagged auto_provisioned=True so admins can spot,
+    rename, or retire these divisions later.
+    """
+    loc = (location_name or "").strip()
+    if not loc:
+        return None
+    parts = [p.strip() for p in loc.split(",") if p.strip()]
+    city = parts[-1] if parts else loc
+    if len(city) < 2:
+        return None
+
+    # Reuse an existing authority whose coverage/zone shares a locality token
+    loc_tokens = set(locality_tokens(loc))
+    existing = await db.authorities.find({"deleted": {"$ne": True}}).to_list(200)
+    for auth in existing:
+        auth_tokens = set(locality_tokens(auth.get("coverage_area", ""))) | set(locality_tokens(auth.get("zone", "")))
+        if loc_tokens & auth_tokens:
+            return auth
+
+    slug = re.sub(r"[^a-z0-9]+", "-", city.lower()).strip("-")[:24] or uuid.uuid4().hex[:8]
+    doc = {
+        "id": f"auth-{slug}-{uuid.uuid4().hex[:4]}",
+        "code": "AUTO-" + re.sub(r"[^A-Z0-9]+", "", city.upper())[:10],
+        "name": f"{city} Roads & Infrastructure Division",
+        "zone": city,
+        "coverage_area": loc,
+        "contact_email": "",
+        "contact_phone": "",
+        "hq_latitude": lat,
+        "hq_longitude": lng,
+        "active_complaints_count": 0,
+        "resolved_count": 0,
+        "deleted": False,
+        "auto_provisioned": True,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.authorities.insert_one(doc)
+    logger.info(f"Auto-provisioned authority '{doc['name']}' for complaint location: {loc}")
+    return doc
+
+
 @api_router.post("/complaints", status_code=201)
 async def create_complaint(
     body: ComplaintCreate,
@@ -1562,8 +1610,10 @@ async def create_complaint(
 ):
     """
     Submits a new civic road damage complaint.
-    Auto-assigns to Demo Authority based on location/zone when possible;
-    otherwise marks SUBMITTED / UNASSIGNED for Admin assignment.
+    Auto-assigns to the authority matching the damage location (locality
+    name, zone keywords, or nearest HQ within jurisdiction). If the location
+    belongs to no existing authority, a new division is provisioned for that
+    area on the spot and the complaint is assigned to it.
     """
     complaint_id = f"comp-{uuid.uuid4().hex[:10]}"
     now_iso = datetime.now(timezone.utc).isoformat()
@@ -1578,9 +1628,12 @@ async def create_complaint(
             detail="Cannot file a complaint: no supported road damage was detected in this inspection."
         )
 
-    # Find authorities for auto-assignment
+    # Find authorities for auto-assignment; if the damage is outside every
+    # jurisdiction, provision an authority for that location on the spot.
     authorities = await db.authorities.find({"deleted": {"$ne": True}}).to_list(100)
     matched_auth = find_matching_authority(body.latitude, body.longitude, body.location_name, authorities)
+    if not matched_auth:
+        matched_auth = await auto_provision_authority(body.location_name, body.latitude, body.longitude)
 
     status_val = ComplaintStatus.ASSIGNED.value if matched_auth else ComplaintStatus.SUBMITTED.value
     assigned_auth_id = matched_auth["id"] if matched_auth else None
@@ -1608,7 +1661,9 @@ async def create_complaint(
             "changed_by_user_id": "system",
             "changed_by_name": "Auto-Dispatch Geo Engine",
             "changed_by_role": "SYSTEM",
-            "notes": f"Auto-assigned to {matched_auth['name']} ({matched_auth.get('zone', 'zone')}) based on the damage location: {body.location_name}.",
+            "notes": f"Auto-assigned to {matched_auth['name']} ({matched_auth.get('zone', 'zone')}) based on the damage location: {body.location_name}." + (
+                " New division auto-created for this area." if matched_auth.get("auto_provisioned") else ""
+            ),
             "timestamp": now_iso
         })
         # Increment active count for authority

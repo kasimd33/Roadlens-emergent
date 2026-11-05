@@ -1425,6 +1425,7 @@ async def analyze_road_damage(
     )
 
     ai_data = None
+    vision_provider_errors: List[str] = []
     if EMERGENT_LLM_KEY and HAS_EMERGENT_LLM:
         try:
             chat = LlmChat(
@@ -1464,8 +1465,9 @@ async def analyze_road_damage(
             logger.info(f"AI Vision parsed result: {ai_data.get('damage_type')}, severity={ai_data.get('severity')}")
         except Exception as e:
             logger.warning(f"GPT-5.4 Vision call failed: {e}")
+            vision_provider_errors.append(f"Emergent LLM: {e}")
             ai_data = None
-    elif GEMINI_API_KEY:
+    if GEMINI_API_KEY and not ai_data:
         try:
             clean_b64 = None
             if image_base64:
@@ -1492,8 +1494,9 @@ async def analyze_road_damage(
             )
         except Exception as e:
             logger.warning(f"Gemini vision call failed: {e}")
+            vision_provider_errors.append(f"Gemini: {e}")
             ai_data = None
-    elif OPENAI_API_KEY:
+    if OPENAI_API_KEY and not ai_data:
         try:
             clean_b64 = None
             if image_base64:
@@ -1520,13 +1523,25 @@ async def analyze_road_damage(
             )
         except Exception as e:
             logger.warning(f"OpenAI vision call failed: {e}")
+            vision_provider_errors.append(f"OpenAI: {e}")
             ai_data = None
 
-    # NO fabricated detections. If the AI could not analyze the image, fail honestly.
+    # NO fabricated detections. If the AI could not analyze the image, fail honestly -
+    # and say WHY, so configuration problems (missing/invalid key, bad model) are
+    # visible instead of a bare 503.
     if not ai_data:
+        if not vision_provider_errors:
+            raise HTTPException(
+                status_code=503,
+                detail="No AI vision provider is configured on the server. "
+                       "Set GEMINI_API_KEY (free key from aistudio.google.com) or "
+                       "OPENAI_API_KEY in the environment and redeploy.",
+            )
         raise HTTPException(
             status_code=503,
-            detail="AI road-damage analysis is temporarily unavailable. Please try again in a moment."
+            detail="AI road-damage analysis failed ("
+                   + "; ".join(vision_provider_errors[:3])
+                   + "). Please try again in a moment."
         )
 
     detected = bool(ai_data.get("detected", False))

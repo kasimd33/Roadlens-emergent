@@ -20,7 +20,7 @@ access for Citizens, Authorities and Admin.
 
 - **Real AI detection only** — no fabricated results; AI failures return honest HTTP 503 with a retry UI
 - **Live GPS** — continuous `watchPosition` tracking with reverse-geocoded Indian place names (OpenStreetMap)
-- **Indian municipal context** — Bengaluru demo divisions, +91 contacts, INR repair-cost estimates,
+- **Indian municipal context** — Ballari (Karnataka) demo divisions, +91 contacts, INR repair-cost estimates,
   auto-assignment by Indian locality keywords
 - **Role-secure workflows** — citizens report/track/close; authorities acknowledge → repair → resolve
   with photo evidence; admins assign/reassign/force-close

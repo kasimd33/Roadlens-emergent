@@ -561,13 +561,13 @@ async def startup_event():
         {
             "id": "auth-downtown",
             "code": "AUTH-CENTRAL",
-            "name": "Central Bengaluru Roads & Works Division",
-            "zone": "Central Bengaluru",
-            "coverage_area": "MG Road, Residency Rd, Shivajinagar, Trinity Circle",
+            "name": "Central Ballari Roads & Works Division",
+            "zone": "Central Ballari",
+            "coverage_area": "Gandhi Nagar, Cowl Bazaar, Brucepeta, Court Circle",
             "contact_email": "central.roads@roadlens.gov.in",
-            "contact_phone": "+91 80 2234 5678",
-            "hq_latitude": 12.9756,
-            "hq_longitude": 77.6068,
+            "contact_phone": "+91 8392 223456",
+            "hq_latitude": 15.1394,
+            "hq_longitude": 76.9214,
             "active_complaints_count": 0,
             "resolved_count": 12,
             "created_at": datetime.now(timezone.utc).isoformat()
@@ -575,13 +575,13 @@ async def startup_event():
         {
             "id": "auth-north",
             "code": "AUTH-NORTH",
-            "name": "North Bengaluru Municipal Highways",
-            "zone": "North Bengaluru",
-            "coverage_area": "Hebbal, Yelahanka, BEL Road, Airport Corridor (NH-44)",
+            "name": "North Ballari Municipal Highways",
+            "zone": "North Ballari",
+            "coverage_area": "Kudithini, Moka, Hospet Rd, NH-50 Corridor",
             "contact_email": "north.highways@roadlens.gov.in",
-            "contact_phone": "+91 80 2345 6789",
-            "hq_latitude": 13.0358,
-            "hq_longitude": 77.5970,
+            "contact_phone": "+91 8392 234567",
+            "hq_latitude": 15.2050,
+            "hq_longitude": 76.8930,
             "active_complaints_count": 0,
             "resolved_count": 8,
             "created_at": datetime.now(timezone.utc).isoformat()
@@ -589,13 +589,13 @@ async def startup_event():
         {
             "id": "auth-south",
             "code": "AUTH-SOUTH",
-            "name": "South Bengaluru Infrastructure Corp",
-            "zone": "South Bengaluru & Industrial Belt",
-            "coverage_area": "Jayanagar, BTM Layout, Bommasandra, Electronic City",
+            "name": "South Ballari Infrastructure Corp",
+            "zone": "South Ballari & Industrial Belt",
+            "coverage_area": "Kappagal, Allipuram, BSS Hill, Industrial Estate",
             "contact_email": "south.infra@roadlens.gov.in",
-            "contact_phone": "+91 80 2456 7890",
-            "hq_latitude": 12.9250,
-            "hq_longitude": 77.5930,
+            "contact_phone": "+91 8392 245678",
+            "hq_latitude": 15.1050,
+            "hq_longitude": 76.9100,
             "active_complaints_count": 0,
             "resolved_count": 15,
             "created_at": datetime.now(timezone.utc).isoformat()
@@ -603,13 +603,13 @@ async def startup_event():
         {
             "id": "auth-suburban",
             "code": "AUTH-EAST",
-            "name": "East Bengaluru Public Works",
-            "zone": "East Bengaluru & Tech Corridor",
-            "coverage_area": "Whitefield, Marathahalli, KR Puram, Old Airport Rd",
+            "name": "East Ballari Public Works",
+            "zone": "East Ballari & Tech Corridor",
+            "coverage_area": "Siruguppa Rd, Vaddaragatti, Bukkasagara, Moka Rd",
             "contact_email": "east.publicworks@roadlens.gov.in",
-            "contact_phone": "+91 80 2567 8901",
-            "hq_latitude": 12.9569,
-            "hq_longitude": 77.7011,
+            "contact_phone": "+91 8392 256789",
+            "hq_latitude": 15.1600,
+            "hq_longitude": 76.9800,
             "active_complaints_count": 0,
             "resolved_count": 6,
             "created_at": datetime.now(timezone.utc).isoformat()
@@ -654,7 +654,7 @@ async def startup_event():
             "status": "ACTIVE",
             "auth_provider": "password",
             "authority_id": "auth-downtown",
-            "authority_name": "Central Bengaluru Roads & Works Division",
+            "authority_name": "Central Ballari Roads & Works Division",
             "disabled": False,
             "created_at": datetime.now(timezone.utc).isoformat()
         },
@@ -691,21 +691,21 @@ async def startup_event():
                 "inspection_id": "insp-seed-1",
                 "user_id": "user-citizen-1",
                 "user_name": "Aarav Sharma (Citizen)",
-                "title": "Severe Water-Filled Pothole on MG Road",
-                "description": "Deep water-logged pothole near the Trinity Junction - serious two-wheeler skid hazard during monsoon.",
+                "title": "Severe Water-Filled Pothole on Gandhi Nagar Main Road",
+                "description": "Deep water-logged pothole near the Court Circle junction - serious two-wheeler skid hazard during monsoon.",
                 "damage_type": "Pothole",
                 "severity": "HIGH",
                 "confidence": 94.8,
                 "bounding_box": {"x": 22.5, "y": 38.0, "width": 45.0, "height": 34.0},
                 "image_url": "https://images.unsplash.com/photo-1709934730506-fba12664d4e4?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzl8MHwxfHNlYXJjaHwzfHxwb3Rob2xlJTIwcm9hZCUyMGRhbWFnZSUyMGluc3BlY3Rpb258ZW58MHx8fHwxNzg5MDU0ODY2fDA&ixlib=rb-4.1.0&q=85",
                 "image_base64": None,
-                "latitude": 12.9730,
-                "longitude": 77.6173,
-                "location_name": "MG Road & Trinity Junction, Central Bengaluru",
-                "landmark": "Near Trinity Metro Station",
+                "latitude": 15.1390,
+                "longitude": 76.9210,
+                "location_name": "Gandhi Nagar Main Road & Court Circle, Central Ballari",
+                "landmark": "Near Court Circle Junction",
                 "status": ComplaintStatus.IN_PROGRESS.value,
                 "assigned_authority_id": "auth-downtown",
-                "assigned_authority_name": "Central Bengaluru Roads & Works Division",
+                "assigned_authority_name": "Central Ballari Roads & Works Division",
                 "repair_evidence": None,
                 "status_history": [
                     {
@@ -725,7 +725,7 @@ async def startup_event():
                         "changed_by_user_id": "system",
                         "changed_by_name": "Auto-Dispatch Geo Engine",
                         "changed_by_role": "SYSTEM",
-                        "notes": "Auto-routed to Central Bengaluru Roads & Works Division based on Central Bengaluru location.",
+                        "notes": "Auto-routed to Central Ballari Roads & Works Division based on Central Ballari location.",
                         "timestamp": (datetime.now(timezone.utc) - timedelta(hours=4, minutes=50)).isoformat()
                     },
                     {
@@ -757,7 +757,7 @@ async def startup_event():
                 "inspection_id": "insp-seed-2",
                 "user_id": "user-citizen-1",
                 "user_name": "Aarav Sharma (Citizen)",
-                "title": "Longitudinal Structural Crack on Ballari Road (NH-44)",
+                "title": "Longitudinal Structural Crack on Hospet Road (NH-50)",
                 "description": "Continuous 8-meter longitudinal crack widening along the service-road edge near the flyover.",
                 "damage_type": "Crack",
                 "severity": "MEDIUM",
@@ -765,18 +765,18 @@ async def startup_event():
                 "bounding_box": {"x": 15.0, "y": 25.0, "width": 60.0, "height": 50.0},
                 "image_url": "https://images.unsplash.com/photo-1635068741358-ab1b9813623f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzl8MHwxfHNlYXJjaHwxfHxwb3Rob2xlJTIwcm9hZCUyMGRhbWFnZSUyMGluc3BlY3Rpb258ZW58MHx8fHwxNzg5MDU0ODY2fDA&ixlib=rb-4.1.0&q=85",
                 "image_base64": None,
-                "latitude": 13.0358,
-                "longitude": 77.5970,
-                "location_name": "Ballari Road (NH-44), Hebbal Flyover Stretch",
-                "landmark": "Near Hebbal Flyover",
+                "latitude": 15.2050,
+                "longitude": 76.8930,
+                "location_name": "Hospet Road (NH-50), Kudithini Stretch",
+                "landmark": "Near Kudithini Junction",
                 "status": ComplaintStatus.RESOLVED.value,
                 "assigned_authority_id": "auth-north",
-                "assigned_authority_name": "North Bengaluru Municipal Highways",
+                "assigned_authority_name": "North Ballari Municipal Highways",
                 "repair_evidence": {
                     "image_url": "https://images.unsplash.com/photo-1635068741358-ab1b9813623f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzl8MHwxfHNlYXJjaHwxfHxwb3Rob2xlJTIwcm9hZCUyMGRhbWFnZSUyMGluc3BlY3Rpb258ZW58MHx8fHwxNzg5MDU0ODY2fDA&ixlib=rb-4.1.0&q=85",
                     "image_base64": None,
                     "notes": "Sealed with polymer-modified hot bitumen sealant. Surface tested level and approved.",
-                    "resolved_by_name": "North Bengaluru Field Crew #3",
+                    "resolved_by_name": "North Ballari Field Crew #3",
                     "resolved_at": (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
                 },
                 "status_history": [
@@ -797,7 +797,7 @@ async def startup_event():
                         "changed_by_user_id": "system",
                         "changed_by_name": "Auto-Dispatch Geo Engine",
                         "changed_by_role": "SYSTEM",
-                        "notes": "Assigned to North Bengaluru Municipal Highways.",
+                        "notes": "Assigned to North Ballari Municipal Highways.",
                         "timestamp": (datetime.now(timezone.utc) - timedelta(days=1, hours=3)).isoformat()
                     },
                     {
@@ -805,7 +805,7 @@ async def startup_event():
                         "status": ComplaintStatus.ACKNOWLEDGED.value,
                         "previous_status": ComplaintStatus.ASSIGNED.value,
                         "changed_by_user_id": "auth-north",
-                        "changed_by_name": "North Bengaluru Municipal Highways",
+                        "changed_by_name": "North Ballari Municipal Highways",
                         "changed_by_role": "AUTHORITY",
                         "notes": "Acknowledged by road maintenance.",
                         "timestamp": (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
@@ -815,7 +815,7 @@ async def startup_event():
                         "status": ComplaintStatus.IN_PROGRESS.value,
                         "previous_status": ComplaintStatus.ACKNOWLEDGED.value,
                         "changed_by_user_id": "auth-north",
-                        "changed_by_name": "North Bengaluru Municipal Highways",
+                        "changed_by_name": "North Ballari Municipal Highways",
                         "changed_by_role": "AUTHORITY",
                         "notes": "Sealant application in progress.",
                         "timestamp": (datetime.now(timezone.utc) - timedelta(hours=6)).isoformat()
@@ -825,7 +825,7 @@ async def startup_event():
                         "status": ComplaintStatus.RESOLVED.value,
                         "previous_status": ComplaintStatus.IN_PROGRESS.value,
                         "changed_by_user_id": "auth-north",
-                        "changed_by_name": "North Bengaluru Municipal Highways",
+                        "changed_by_name": "North Ballari Municipal Highways",
                         "changed_by_role": "AUTHORITY",
                         "notes": "Repair completed with hot-pour sealant. Evidence verified.",
                         "timestamp": (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
@@ -840,16 +840,16 @@ async def startup_event():
                 "user_id": "user-citizen-1",
                 "user_name": "Aarav Sharma (Citizen)",
                 "title": "Minor Surface Degradation & Raveling",
-                "description": "Asphalt wear and loose aggregate on the Electronic City access road.",
+                "description": "Asphalt wear and loose aggregate on the Kappagal Road access stretch.",
                 "damage_type": "Surface Damage",
                 "severity": "LOW",
                 "confidence": 82.1,
                 "bounding_box": {"x": 30.0, "y": 40.0, "width": 40.0, "height": 30.0},
                 "image_url": "https://images.unsplash.com/photo-1709934730506-fba12664d4e4?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzl8MHwxfHNlYXJjaHwzfHxwb3Rob2xlJTIwcm9hZCUyMGRhbWFnZSUyMGluc3BlY3Rpb258ZW58MHx8fHwxNzg5MDU0ODY2fDA&ixlib=rb-4.1.0&q=85",
                 "image_base64": None,
-                "latitude": 12.8452,
-                "longitude": 77.6600,
-                "location_name": "Electronic City Phase 1 Access Road",
+                "latitude": 15.1050,
+                "longitude": 76.9100,
+                "location_name": "Kappagal Road Industrial Area Access Road",
                 "landmark": "Near Tech Park Gate 4",
                 "status": ComplaintStatus.SUBMITTED.value,
                 "assigned_authority_id": None,
@@ -880,16 +880,16 @@ async def startup_event():
         # Seed initial notification
         await create_notification(
             user_id="user-citizen-1",
-            title="Work In Progress: MG Road Pothole",
-            message="Central Bengaluru Roads & Works Division has started on-site repair at MG Road & Trinity Junction.",
+            title="Work In Progress: Gandhi Nagar Main Road Pothole",
+            message="Central Ballari Roads & Works Division has started on-site repair at Gandhi Nagar Main Road & Court Circle.",
             notification_type="STATUS_CHANGE",
             complaint_id="comp-seed-1",
             severity="HIGH"
         )
         await create_notification(
             user_id="user-citizen-1",
-            title="Complaint Resolved: Ballari Road Crack",
-            message="North Bengaluru Municipal Highways resolved the ticket with hot-pour polymer sealant.",
+            title="Complaint Resolved: Hospet Road Crack",
+            message="North Ballari Municipal Highways resolved the ticket with hot-pour polymer sealant.",
             notification_type="RESOLUTION",
             complaint_id="comp-seed-2",
             severity="MEDIUM"
@@ -1479,7 +1479,7 @@ GENERIC_PLACE_WORDS = {
     "city", "town", "plaza", "park", "mall", "market", "station", "hospital",
     "bank", "hotel", "bridge", "metro", "gate", "center", "centre", "junction",
     "office", "campus", "complex", "apartment", "apartments", "north", "south",
-    "east", "west", "central", "india", "bengaluru", "bangalore", "near",
+    "east", "west", "central", "india", "ballari", "bellary", "near",
 }
 
 
@@ -1499,11 +1499,11 @@ def find_matching_authority(lat: float, lng: float, location_name: str, authorit
 
     Matching tiers (first hit wins):
       1. Same location name: word-boundary locality match against coverage_area
-         (e.g. "Near Hebbal Flyover, Bengaluru" -> authority covering Hebbal).
+         (e.g. "Near Kudithini Junction, Ballari" -> authority covering Kudithini).
       2. Zone direction keywords (central/north/south/east/west) shared by the
          location name and the authority's zone. Only fires when the location
          explicitly mentions the city, so "North Delhi" never matches
-         "North Bengaluru".
+         "North Ballari".
       3. Nearby towns: nearest authority by haversine distance from the damage
          coordinates to its HQ coordinates - but only within
          NEARBY_RADIUS_KM, so damage reported from another city is never
@@ -1525,7 +1525,7 @@ def find_matching_authority(lat: float, lng: float, location_name: str, authorit
             return auth
 
     # Tier 2: zone direction keyword match (city must be named in the location)
-    mentions_city = any(city in loc_lower for city in ("bengaluru", "bangalore"))
+    mentions_city = any(city in loc_lower for city in ("ballari", "bellary"))
     if mentions_city:
         for auth in authorities_list:
             zone_lower = auth.get("zone", "").lower()
@@ -1540,7 +1540,7 @@ def find_matching_authority(lat: float, lng: float, location_name: str, authorit
             return (hq_lat, hq_lng)
         return None
 
-    NEARBY_RADIUS_KM = 40.0  # ~Bengaluru metro edge; other cities are farther
+    NEARBY_RADIUS_KM = 40.0  # ~Ballari metro edge; other cities are farther
     if lat is not None and lng is not None and (abs(lat) > 0.01 or abs(lng) > 0.01):
         with_coords = [(auth, hq_coords(auth)) for auth in authorities_list]
         with_coords = [(auth, hq) for auth, hq in with_coords if hq is not None]

@@ -117,7 +117,7 @@ export const WorkspacePage: React.FC = () => {
   const assignedToAuthority: Complaint[] = allComplaints.filter(
     (c) =>
       c.assigned_authority_id === user?.authority_id ||
-      c.assigned_authority_name?.includes("Bengaluru") ||
+      c.assigned_authority_name?.includes("Ballari") ||
       c.status === "ASSIGNED" ||
       c.status === "ACKNOWLEDGED" ||
       c.status === "IN_PROGRESS",
@@ -149,7 +149,7 @@ export const WorkspacePage: React.FC = () => {
             <div>
               <h1 className="text-xl font-black text-gray-800">Authority Field Workspace</h1>
               <p className="text-xs text-gray-500 mt-1">
-                {user?.authority_name || "Central Bengaluru Roads & Works Division"}
+                {user?.authority_name || "Central Ballari Roads & Works Division"}
               </p>
             </div>
             <span className="bg-amber-500 text-white text-[11px] font-extrabold rounded-md px-2.5 py-1 whitespace-nowrap">

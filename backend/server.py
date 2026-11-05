@@ -1362,7 +1362,6 @@ async def _analyze_with_openai_vision(system_prompt: str, user_text: str, image_
                         "type": "image_url",
                         "image_url": {
                             "url": f"data:image/jpeg;base64,{image_b64}",
-                            "detail": "high",
                         },
                     },
                 ],
@@ -1376,9 +1375,20 @@ async def _analyze_with_openai_vision(system_prompt: str, user_text: str, image_
         "Content-Type": "application/json",
     }
     async with httpx.AsyncClient(timeout=40.0) as http_client:
-        resp = await http_client.post(url, json=payload, headers=headers)
-        resp.raise_for_status()
-        data = resp.json()
+        # Free-tier OpenAI-compatible providers (e.g. Groq) throttle occasionally —
+        # one patient retry covers transient 429s without slow failures.
+        data = None
+        for attempt in range(2):
+            resp = await http_client.post(url, json=payload, headers=headers)
+            if resp.status_code == 200:
+                data = resp.json()
+                break
+            if resp.status_code in (429, 500, 502, 503) and attempt == 0:
+                await asyncio.sleep(5.0)
+                continue
+            resp.raise_for_status()
+        if data is None:
+            raise RuntimeError(f"OpenAI-compatible vision API returned HTTP {resp.status_code}")
     content = (data.get("choices") or [{}])[0].get("message", {}).get("content", "")
     cleaned = re.sub(r"^\s*```(?:json)?\s*", "", (content or "").strip())
     cleaned = re.sub(r"\s*```\s*$", "", cleaned).strip()

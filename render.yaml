@@ -19,5 +19,11 @@ services:
         sync: false          # your frontend URL, e.g. https://roadlens.vercel.app
       - key: ALLOW_DEMO_DATA
         value: "true"        # seed demo users + Ballari divisions; set false for real production
+      - key: OPENAI_API_KEY
+        sync: false          # Groq free-tier key (gsk_...) — fallback vision provider
+      - key: OPENAI_BASE_URL
+        value: https://api.groq.com/openai/v1
+      - key: OPENAI_VISION_MODEL
+        value: meta-llama/llama-4-scout-17b-16e-instruct
       - key: PYTHON_VERSION
         value: 3.11.7

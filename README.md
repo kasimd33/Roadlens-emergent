@@ -56,6 +56,15 @@ Point the frontend at the backend with `VITE_BACKEND_URL` in `web-frontend/.env.
 | Authority | authority@roadlens.gov | Authority@123 |
 | Admin | admin@roadlens.gov | Admin@123 |
 
+Per-division authority logins (Ballari, Karnataka):
+
+| Division | Email | Password |
+|---|---|---|
+| Central Ballari Roads & Works Division | authority.central@roadlens.gov | Central@123 |
+| North Ballari Municipal Highways | authority.north@roadlens.gov | North@123 |
+| South Ballari Infrastructure Corp | authority.south@roadlens.gov | South@123 |
+| East Ballari Public Works | authority.east@roadlens.gov | East@123 |
+
 ## Deploying to production
 
 The stack deploys as three free-tier services:

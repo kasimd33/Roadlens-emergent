@@ -24,6 +24,6 @@ services:
       - key: OPENAI_BASE_URL
         value: https://openrouter.ai/api/v1
       - key: OPENAI_VISION_MODEL
-        value: google/gemma-4-31b-it:free
+        value: nvidia/nemotron-3.5-super-vl:free
       - key: PYTHON_VERSION
         value: 3.11.7

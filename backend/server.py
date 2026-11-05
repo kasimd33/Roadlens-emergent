@@ -1367,7 +1367,7 @@ async def _analyze_with_openai_vision(system_prompt: str, user_text: str, image_
                 ],
             },
         ],
-        "max_tokens": 600,
+        "max_tokens": 2500,  # reasoning models (e.g. nemotron VL) need headroom for thinking + JSON
         "temperature": 0.1,
     }
     headers = {

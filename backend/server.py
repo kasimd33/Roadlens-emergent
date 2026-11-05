@@ -2398,7 +2398,18 @@ async def root():
 
 @api_router.get("/health")
 async def health():
-    return {"status": "ok", "service": "roadlens-backend"}
+    # Provider presence only (booleans) - never expose key values. Helps verify
+    # vision env vars actually reached the running deployment.
+    return {
+        "status": "ok",
+        "service": "roadlens-backend",
+        "vision_providers": {
+            "emergent": bool(EMERGENT_LLM_KEY) and HAS_EMERGENT_LLM,
+            "gemini": bool(GEMINI_API_KEY),
+            "openai_compatible": bool(OPENAI_API_KEY),
+            "fallback_model": OPENAI_VISION_MODEL,
+        },
+    }
 
 
 # Mount API Router

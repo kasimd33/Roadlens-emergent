@@ -1305,10 +1305,13 @@ async def _analyze_with_gemini_vision(system_prompt: str, user_text: str, image_
             "responseMimeType": "application/json",
         },
     }
-    # Free-tier Gemini endpoints return transient 429/5xx under load — retry with backoff
+    # Free-tier Gemini endpoints return transient 429/5xx under load — retry with
+    # backoff, honouring Retry-After when Google sends it (per-minute free-tier
+    # limits reset within ~60s, so a patient retry often succeeds).
     data = None
-    async with httpx.AsyncClient(timeout=60.0) as http_client:
-        for attempt in range(3):
+    last_error: Optional[str] = None
+    async with httpx.AsyncClient(timeout=90.0) as http_client:
+        for attempt in range(4):
             resp = await http_client.post(
                 url,
                 json=payload,
@@ -1318,12 +1321,21 @@ async def _analyze_with_gemini_vision(system_prompt: str, user_text: str, image_
             if resp.status_code == 200:
                 data = resp.json()
                 break
-            if resp.status_code in (429, 500, 502, 503) and attempt < 2:
-                await asyncio.sleep(2.5 * (attempt + 1))
+            detail = (resp.text or "").strip()[:200]
+            last_error = f"HTTP {resp.status_code}: {detail}" if detail else f"HTTP {resp.status_code}"
+            if resp.status_code in (429, 500, 502, 503) and attempt < 3:
+                wait = 5.0 * (attempt + 1)
+                retry_after = resp.headers.get("retry-after")
+                if retry_after:
+                    try:
+                        wait = min(max(float(retry_after), 5.0), 20.0)
+                    except ValueError:
+                        pass
+                await asyncio.sleep(wait)
                 continue
-            resp.raise_for_status()
+            raise RuntimeError(f"Gemini API error - {last_error}")
     if data is None:
-        raise RuntimeError("Gemini API did not return a successful response after retries")
+        raise RuntimeError(f"Gemini API did not return a successful response after retries - {last_error}")
     parts = ((data.get("candidates") or [{}])[0].get("content") or {}).get("parts") or []
     content = "".join(p.get("text", "") for p in parts).strip()
     cleaned = re.sub(r"^\s*```(?:json)?\s*", "", content)

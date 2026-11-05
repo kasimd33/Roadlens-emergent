@@ -39,42 +39,42 @@ export const AuthorityLoginAlert: React.FC<AuthorityLoginAlertProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-void/80 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
       role="dialog"
       aria-modal="true"
       aria-label="High severity dispatch alert"
     >
-      <div className="w-full max-w-md bg-carbon rounded-xl border border-graphite shadow-xl overflow-hidden">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="bg-obsidian border-b border-graphite text-paper px-4 py-4 flex items-start gap-3">
-          <span className="w-10 h-10 rounded-full bg-white/[0.05] border border-graphite flex items-center justify-center shrink-0 text-coral-red">
+        <div className="bg-red-600 text-white px-4 py-4 flex items-start gap-3">
+          <span className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center shrink-0">
             <Siren size={22} />
           </span>
           <div className="flex-1 min-w-0">
-            <h2 className="text-base font-medium leading-tight">Critical Dispatch Alert</h2>
-            <p className="text-xs text-mist mt-0.5 leading-snug">
+            <h2 className="text-base font-black leading-tight">Critical Dispatch Alert</h2>
+            <p className="text-xs text-red-100 mt-0.5 leading-snug">
               {sorted.length} high-severity report{sorted.length === 1 ? "" : "s"} assigned to your division
               {activeCount > 0 && (
-                <> &middot; <span className="font-medium text-coral-red">{activeCount} awaiting action</span></>
+                <> &middot; <span className="font-bold">{activeCount} awaiting action</span></>
               )}
             </p>
           </div>
           <button
             onClick={onClose}
             aria-label="Dismiss alert"
-            className="p-1 rounded hover:bg-white/[0.05] transition-colors shrink-0"
+            className="p-1 rounded hover:bg-white/20 transition-colors shrink-0"
           >
             <X size={18} />
           </button>
         </div>
 
         {/* Complaint list */}
-        <div className="max-h-[320px] overflow-y-auto divide-y divide-graphite">
+        <div className="max-h-[320px] overflow-y-auto divide-y divide-gray-100">
           {sorted.map((c) => (
             <button
               key={c.id}
               onClick={() => onSelect(c)}
-              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-obsidian transition-colors"
+              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-red-50 transition-colors"
             >
               <img
                 src={c.image_url || (c.image_base64
@@ -83,35 +83,35 @@ export const AuthorityLoginAlert: React.FC<AuthorityLoginAlertProps> = ({
                     : `data:image/jpeg;base64,${c.image_base64}`
                   : FALLBACK_IMG)}
                 alt={c.title}
-                className="w-14 h-14 rounded-lg object-cover shrink-0 border border-graphite"
+                className="w-14 h-14 rounded-lg object-cover shrink-0 border border-gray-200"
               />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-medium text-coral-red uppercase bg-coral-red/15 border border-coral-red/30 rounded px-1.5 py-0.5">
+                  <span className="text-[10px] font-black text-red-600 uppercase bg-red-100 rounded px-1.5 py-0.5">
                     HIGH
                   </span>
                   <StatusBadge status={c.status} size="sm" />
                 </div>
-                <p className="text-[13px] font-medium text-paper truncate mt-1">{c.title}</p>
+                <p className="text-[13px] font-bold text-gray-800 truncate mt-1">{c.title}</p>
                 <div className="flex items-center min-w-0 mt-0.5">
-                  <MapPin size={11} className="text-ash mr-1 shrink-0" />
-                  <span className="text-[11px] text-fog truncate">{c.location_name}</span>
+                  <MapPin size={11} className="text-gray-400 mr-1 shrink-0" />
+                  <span className="text-[11px] text-gray-500 truncate">{c.location_name}</span>
                 </div>
               </div>
-              <ChevronRight size={16} className="text-smoke shrink-0" />
+              <ChevronRight size={16} className="text-gray-300 shrink-0" />
             </button>
           ))}
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-3 bg-obsidian border-t border-graphite flex items-center justify-between">
-          <span className="flex items-center gap-1 text-[10px] font-normal text-ash">
-            <AlertTriangle size={12} className="text-coral-red" />
+        <div className="px-4 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+          <span className="flex items-center gap-1 text-[10px] font-semibold text-gray-400">
+            <AlertTriangle size={12} className="text-amber-500" />
             Shown once per login
           </span>
           <button
             onClick={onClose}
-            className="border border-graphite text-mist text-xs font-normal uppercase tracking-wide rounded-md px-4 py-2 hover:border-smoke transition-colors"
+            className="bg-red-600 text-white text-xs font-black uppercase tracking-wide rounded-lg px-4 py-2 hover:bg-red-700 transition-colors"
           >
             Review Later
           </button>

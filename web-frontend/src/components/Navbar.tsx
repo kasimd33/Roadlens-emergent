@@ -5,9 +5,9 @@ import type { UserRole } from "../types";
 import { ScanLine, User, X, Phone, Edit2, LogOut } from "lucide-react";
 
 const ROLE_COLORS: Record<UserRole, string> = {
-  USER: "#8a8f98",
-  AUTHORITY: "#02b8cc",
-  ADMIN: "#6366f1",
+  USER: "#3B82F6",
+  AUTHORITY: "#D97706",
+  ADMIN: "#1D4ED8",
 };
 const ROLE_LABELS: Record<UserRole, string> = {
   USER: "Citizen Reporter",
@@ -53,49 +53,48 @@ export const Navbar: React.FC = () => {
 
   return (
     <>
-      <nav className="bg-void/90 backdrop-blur px-4 py-2.5 flex items-center justify-between border-b border-graphite sticky top-0 z-40">
+      <nav className="bg-[#1E3A8A] px-4 py-2.5 flex items-center justify-between border-b border-blue-900 sticky top-0 z-40">
         <div className="flex items-center gap-2.5">
-          <ScanLine size={20} className="text-paper" />
+          <ScanLine size={24} className="text-white" />
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-paper font-medium text-base tracking-[-0.01em]">RoadLens</span>
-              <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-mist px-2 py-0.5 rounded-full bg-white/[0.05] uppercase tracking-wide">
-                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: ROLE_COLORS[role] }} />
+              <span className="text-white font-black text-base tracking-wide">RoadLens</span>
+              <span className="text-[10px] font-black text-white px-1.5 py-0.5 rounded uppercase" style={{ backgroundColor: ROLE_COLORS[role] }}>
                 {role}
               </span>
             </div>
-            <p className="text-fog text-xs font-normal">{user?.name || user?.full_name || user?.email || "Guest"}</p>
+            <p className="text-blue-300 text-xs font-medium">{user?.name || user?.full_name || user?.email || "Guest"}</p>
           </div>
         </div>
         <button
           onClick={() => setShowProfile(true)}
-          className="w-9 h-9 rounded-full bg-obsidian border border-graphite flex items-center justify-center hover:border-smoke transition-colors"
+          className="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center hover:bg-blue-400 transition-colors"
         >
-          <User size={18} className="text-mist" />
+          <User size={18} className="text-white" />
         </button>
       </nav>
 
       {showProfile && (
-        <div className="fixed inset-0 bg-void/80 z-50 flex items-center justify-center p-4" onClick={() => { setShowProfile(false); setEditing(false); }}>
-          <div className="bg-carbon rounded-xl border border-graphite shadow-xl p-5 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => { setShowProfile(false); setEditing(false); }}>
+          <div className="bg-white rounded-2xl p-5 w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-start justify-between mb-4">
               <div>
-                <h2 className="text-lg font-medium text-paper">My Account</h2>
-                <p className="text-xs text-fog">{editing ? "Update your contact details" : "Signed in session"}</p>
+                <h2 className="text-lg font-black text-gray-800">My Account</h2>
+                <p className="text-xs text-gray-500">{editing ? "Update your contact details" : "Signed in session"}</p>
               </div>
-              <button onClick={() => { setShowProfile(false); setEditing(false); }} className="p-1 text-ash hover:text-mist">
+              <button onClick={() => { setShowProfile(false); setEditing(false); }} className="p-1 text-gray-400 hover:text-gray-600">
                 <X size={20} />
               </button>
             </div>
 
-            <div className="flex items-center gap-3 border border-graphite rounded-xl p-3 mb-4">
+            <div className="flex items-center gap-3 border-2 border-gray-100 rounded-xl p-3 mb-4">
               <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: ROLE_COLORS[role] }}>
-                <User size={22} className="text-void" />
+                <User size={22} className="text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-paper truncate">{user?.name || user?.full_name || "User"}</p>
-                <p className="text-xs text-fog truncate">{user?.email}</p>
-                <span className="text-[10px] font-medium text-mist px-2 py-0.5 rounded-full bg-white/[0.05] mt-1 inline-block uppercase tracking-wide">
+                <p className="font-black text-gray-800 truncate">{user?.name || user?.full_name || "User"}</p>
+                <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+                <span className="text-[10px] font-black text-white px-2 py-0.5 rounded mt-1 inline-block" style={{ backgroundColor: ROLE_COLORS[role] }}>
                   {ROLE_LABELS[role]}
                 </span>
               </div>
@@ -103,28 +102,28 @@ export const Navbar: React.FC = () => {
 
             {editing ? (
               <div>
-                <label className="text-xs font-medium text-mist block mb-1">Name</label>
-                <input value={editName} onChange={e => setEditName(e.target.value)} className="w-full bg-white/[0.02] border border-white/[0.08] rounded-md px-3.5 py-2.5 text-sm text-mist mb-3 placeholder:text-fog focus:outline-none focus:border-mist" />
-                <label className="text-xs font-medium text-mist block mb-1">Phone</label>
-                <input value={editPhone} onChange={e => setEditPhone(e.target.value)} className="w-full bg-white/[0.02] border border-white/[0.08] rounded-md px-3.5 py-2.5 text-sm text-mist mb-3 placeholder:text-fog focus:outline-none focus:border-mist" />
-                {saveError && <p className="text-xs text-coral-red font-medium mb-2">{saveError}</p>}
+                <label className="text-xs font-black text-gray-700 block mb-1">Name</label>
+                <input value={editName} onChange={e => setEditName(e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <label className="text-xs font-black text-gray-700 block mb-1">Phone</label>
+                <input value={editPhone} onChange={e => setEditPhone(e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                {saveError && <p className="text-xs text-red-600 font-semibold mb-2">{saveError}</p>}
                 <div className="flex gap-2">
-                  <button onClick={() => setEditing(false)} className="flex-1 border border-graphite rounded-md py-2.5 text-sm font-normal text-mist hover:border-smoke">Cancel</button>
-                  <button onClick={saveProfile} disabled={saving} className="flex-1 bg-acid-lime text-void rounded-md py-2.5 text-sm font-medium hover:brightness-90 disabled:opacity-70">
+                  <button onClick={() => setEditing(false)} className="flex-1 border border-gray-200 rounded-lg py-2.5 text-sm font-bold text-gray-700 hover:bg-gray-50">Cancel</button>
+                  <button onClick={saveProfile} disabled={saving} className="flex-1 bg-blue-600 text-white rounded-lg py-2.5 text-sm font-black hover:bg-blue-700 disabled:opacity-70">
                     {saving ? "Saving..." : "Save Changes"}
                   </button>
                 </div>
               </div>
             ) : (
               <>
-                <div className="flex items-center gap-2 bg-white/[0.02] border border-white/[0.08] rounded-md px-3 py-2.5 mb-3">
-                  <Phone size={15} className="text-ash" />
-                  <span className="text-sm text-mist">{user?.phone || "No phone number added"}</span>
+                <div className="flex items-center gap-2 border rounded-lg px-3 py-2.5 mb-3">
+                  <Phone size={15} className="text-gray-400" />
+                  <span className="text-sm text-gray-700">{user?.phone || "No phone number added"}</span>
                 </div>
-                <button onClick={startEdit} className="w-full flex items-center justify-center gap-2 bg-acid-lime text-void rounded-md py-2.5 text-sm font-medium hover:brightness-90 mb-2">
+                <button onClick={startEdit} className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white rounded-lg py-2.5 text-sm font-black hover:bg-blue-700 mb-2">
                   <Edit2 size={15} /> Edit Profile
                 </button>
-                <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 border border-graphite text-mist rounded-md py-2.5 text-sm font-normal hover:border-smoke">
+                <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 border border-red-500 text-red-600 rounded-lg py-2.5 text-sm font-bold hover:bg-red-50">
                   <LogOut size={15} /> Log Out
                 </button>
               </>

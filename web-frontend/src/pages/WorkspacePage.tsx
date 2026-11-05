@@ -132,12 +132,12 @@ export const WorkspacePage: React.FC = () => {
   );
 
   const pipelineBtn =
-    "flex items-center justify-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium";
+    "flex items-center justify-center gap-1.5 rounded-md px-3 py-2 text-xs font-bold text-white";
 
   return (
     <div className="space-y-5">
       {actionError && (
-        <p className="text-xs font-medium text-coral-red bg-coral-red/10 border border-coral-red/30 rounded-md px-3 py-2" role="alert">
+        <p className="text-xs font-semibold text-red-600 bg-red-100 border border-red-200 rounded-lg px-3 py-2" role="alert">
           {actionError}
         </p>
       )}
@@ -147,26 +147,26 @@ export const WorkspacePage: React.FC = () => {
         <div className="space-y-5">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h1 className="text-xl font-medium text-paper tracking-[-0.012em]">Authority Field Workspace</h1>
-              <p className="text-xs text-fog mt-1">
+              <h1 className="text-xl font-black text-gray-800">Authority Field Workspace</h1>
+              <p className="text-xs text-gray-500 mt-1">
                 {user?.authority_name || "Central Ballari Roads & Works Division"}
               </p>
             </div>
-            <span className="bg-white/[0.05] text-mist text-[11px] font-medium rounded-full px-2.5 py-1 whitespace-nowrap">
+            <span className="bg-amber-500 text-white text-[11px] font-extrabold rounded-md px-2.5 py-1 whitespace-nowrap">
               {assignedToAuthority.length} Active Tickets
             </span>
           </div>
 
           <section>
-            <h2 className="text-[15px] font-medium text-paper mb-2.5">Assigned Field Work Orders</h2>
+            <h2 className="text-[15px] font-black text-gray-800 mb-2.5">Assigned Field Work Orders</h2>
 
             {complaintsLoading ? (
-              <div className="py-10 text-center text-sm text-fog font-medium">Loading work orders…</div>
+              <div className="py-10 text-center text-sm text-gray-400 font-semibold">Loading work orders…</div>
             ) : assignedToAuthority.length === 0 ? (
-              <div className="border border-dashed border-smoke bg-white/[0.02] rounded-xl p-10 text-center">
-                <CheckCheck size={44} className="text-ash mx-auto" />
-                <p className="text-[15px] font-medium text-paper mt-2">All Work Orders Cleared!</p>
-                <p className="text-xs text-fog mt-1">
+              <div className="border-[1.5px] border-dashed border-gray-300 rounded-xl p-10 text-center bg-white">
+                <CheckCheck size={44} className="text-green-600 mx-auto" />
+                <p className="text-[15px] font-bold text-gray-800 mt-2">All Work Orders Cleared!</p>
+                <p className="text-xs text-gray-500 mt-1">
                   No pending road maintenance dispatched to your unit.
                 </p>
               </div>
@@ -175,7 +175,7 @@ export const WorkspacePage: React.FC = () => {
                 {assignedToAuthority.map((c) => (
                   <div
                     key={c.id}
-                    className="bg-carbon border border-graphite rounded-xl p-3"
+                    className="bg-white border border-gray-200 rounded-xl p-3"
                   >
                     <div className="flex items-start gap-3">
                       <div className="flex-1 min-w-0">
@@ -183,18 +183,18 @@ export const WorkspacePage: React.FC = () => {
                           <SeverityBadge severity={c.severity} size="sm" />
                           <StatusBadge status={c.status} size="sm" />
                         </div>
-                        <p className="text-sm font-medium text-paper truncate">{c.title}</p>
-                        <p className="text-[11px] text-fog truncate mt-0.5">{c.location_name}</p>
+                        <p className="text-sm font-bold text-gray-800 truncate">{c.title}</p>
+                        <p className="text-[11px] text-gray-500 truncate mt-0.5">{c.location_name}</p>
                       </div>
                       <img
                         src={complaintImage(c)}
                         alt={c.title}
-                        className="w-16 h-16 rounded-md object-cover shrink-0"
+                        className="w-16 h-16 rounded-lg object-cover shrink-0"
                       />
                     </div>
 
                     {/* Pipeline actions */}
-                    <div className="flex flex-wrap gap-2 mt-3 pt-2.5 border-t border-graphite">
+                    <div className="flex flex-wrap gap-2 mt-3 pt-2.5 border-t border-gray-200">
                       {c.status === "ASSIGNED" && (
                         <button
                           onClick={() =>
@@ -205,7 +205,7 @@ export const WorkspacePage: React.FC = () => {
                             })
                           }
                           disabled={updateStatusMutation.isPending}
-                          className={`${pipelineBtn} border border-graphite text-mist hover:border-smoke disabled:opacity-70`}
+                          className={`${pipelineBtn} bg-amber-500 hover:bg-amber-600 disabled:opacity-70`}
                         >
                           <Hand size={14} /> Acknowledge
                         </button>
@@ -220,7 +220,7 @@ export const WorkspacePage: React.FC = () => {
                             })
                           }
                           disabled={updateStatusMutation.isPending}
-                          className={`${pipelineBtn} bg-acid-lime text-void hover:brightness-90 disabled:opacity-70`}
+                          className={`${pipelineBtn} bg-blue-600 hover:bg-blue-700 disabled:opacity-70`}
                         >
                           <Wrench size={14} /> Start Work
                         </button>
@@ -228,14 +228,14 @@ export const WorkspacePage: React.FC = () => {
                       {c.status === "IN_PROGRESS" && (
                         <button
                           onClick={() => setActiveRepairComplaint(c)}
-                          className={`${pipelineBtn} bg-paper text-void hover:brightness-90 rounded-full`}
+                          className={`${pipelineBtn} bg-green-600 hover:bg-green-700`}
                         >
                           <Camera size={14} /> Upload Proof &amp; Resolve
                         </button>
                       )}
                       <button
                         onClick={() => setSelectedComplaint(c)}
-                        className="rounded-md border border-graphite px-3 py-2 text-xs font-medium text-mist hover:border-smoke"
+                        className="rounded-md border border-gray-300 px-3 py-2 text-xs font-semibold text-gray-800 hover:bg-gray-50"
                       >
                         Full Details
                       </button>
@@ -252,20 +252,20 @@ export const WorkspacePage: React.FC = () => {
       {role === "ADMIN" && (
         <div className="space-y-6">
           <div>
-            <h1 className="text-xl font-medium text-paper tracking-[-0.012em]">City Governance Dashboard</h1>
-            <p className="text-xs text-fog mt-1">Municipal Overview &amp; Authority Dispatching</p>
+            <h1 className="text-xl font-black text-gray-800">City Governance Dashboard</h1>
+            <p className="text-xs text-gray-500 mt-1">Municipal Overview &amp; Authority Dispatching</p>
           </div>
 
           {/* Unassigned dispatch queue */}
           <section>
-            <h2 className="text-[15px] font-medium text-paper mb-2.5">
+            <h2 className="text-[15px] font-black text-gray-800 mb-2.5">
               Unassigned / Pending Dispatch ({unassignedComplaints.length})
             </h2>
 
             {unassignedComplaints.length === 0 ? (
-              <div className="flex items-center gap-2 border border-graphite rounded-xl p-3 bg-carbon">
-                <CheckCircle size={24} className="text-pulse-green shrink-0" />
-                <p className="text-xs text-fog">
+              <div className="flex items-center gap-2 border border-gray-200 rounded-lg p-3 bg-white">
+                <CheckCircle size={24} className="text-green-600 shrink-0" />
+                <p className="text-xs text-gray-500">
                   All current complaints are assigned to municipal authorities.
                 </p>
               </div>
@@ -274,19 +274,19 @@ export const WorkspacePage: React.FC = () => {
                 {unassignedComplaints.map((c) => (
                   <div
                     key={c.id}
-                    className="flex items-center gap-3 bg-carbon border border-graphite rounded-xl p-3"
+                    className="flex items-center gap-3 bg-white border border-gray-200 rounded-lg p-3"
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 mb-1 flex-wrap">
                         <SeverityBadge severity={c.severity} size="sm" />
                         <StatusBadge status={c.status} size="sm" />
                       </div>
-                      <p className="text-sm font-medium text-paper truncate">{c.title}</p>
-                      <p className="text-[11px] text-fog truncate mt-0.5">{c.location_name}</p>
+                      <p className="text-sm font-bold text-gray-800 truncate">{c.title}</p>
+                      <p className="text-[11px] text-gray-500 truncate mt-0.5">{c.location_name}</p>
                     </div>
                     <button
                       onClick={() => setActiveAssignComplaint(c)}
-                      className="flex items-center gap-1 bg-acid-lime text-void rounded-md px-3 py-2 text-xs font-medium hover:brightness-90 shrink-0"
+                      className="flex items-center gap-1 bg-blue-700 text-white rounded-md px-3 py-2 text-xs font-bold hover:bg-blue-800 shrink-0"
                     >
                       <GitBranch size={14} /> Assign
                     </button>
@@ -299,45 +299,45 @@ export const WorkspacePage: React.FC = () => {
           {/* Authorities directory */}
           <section>
             <div className="flex items-center justify-between mb-2.5 gap-2">
-              <h2 className="text-[15px] font-medium text-paper">
+              <h2 className="text-[15px] font-black text-gray-800">
                 Municipal Authority Divisions ({authorities.length})
               </h2>
               <button
                 onClick={() => setShowCreateDept(true)}
-                className="flex items-center gap-1 bg-acid-lime text-void rounded-md px-2.5 py-1.5 text-xs font-medium hover:brightness-90 shrink-0"
+                className="flex items-center gap-1 bg-blue-700 text-white rounded-md px-2.5 py-1.5 text-xs font-extrabold hover:bg-blue-800 shrink-0"
               >
                 <Plus size={16} /> Add Department
               </button>
             </div>
 
             {deptError && (
-              <p className="text-xs font-medium text-coral-red bg-coral-red/10 border border-coral-red/30 rounded-md px-3 py-2 mb-2.5" role="alert">
+              <p className="text-xs font-semibold text-red-600 bg-red-100 rounded-lg px-3 py-2 mb-2.5" role="alert">
                 {deptError}
               </p>
             )}
 
             <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
               {authorities.map((auth: Authority) => (
-                <div key={auth.id} className="bg-carbon border border-graphite rounded-xl p-3">
+                <div key={auth.id} className="bg-white border border-gray-200 rounded-lg p-3">
                   <div className="flex items-center gap-1.5 mb-1">
-                    <Building size={18} className="text-ash" />
-                    <span className="text-[11px] font-medium text-fog font-berkeley-mono">{auth.code}</span>
+                    <Building size={18} className="text-blue-700" />
+                    <span className="text-[11px] font-extrabold text-blue-700">{auth.code}</span>
                     <button
                       onClick={() => deleteAuthorityMutation.mutate(auth.id)}
-                      className="ml-auto p-1 text-fog hover:bg-obsidian rounded-md"
+                      className="ml-auto p-1 text-red-600 hover:bg-red-50 rounded"
                       aria-label={`Delete ${auth.name}`}
                     >
                       <Trash2 size={16} />
                     </button>
                   </div>
-                  <p className="text-sm font-medium text-paper">{auth.name}</p>
-                  <p className="text-[11px] text-fog mt-0.5">Zone: {auth.zone}</p>
-                  <p className="text-[10px] text-fog truncate">Area: {auth.coverage_area}</p>
-                  <div className="flex gap-3 mt-2 pt-1.5 border-t border-graphite">
-                    <span className="text-[11px] font-medium text-acid-lime">
+                  <p className="text-sm font-bold text-gray-800">{auth.name}</p>
+                  <p className="text-[11px] text-gray-500 mt-0.5">Zone: {auth.zone}</p>
+                  <p className="text-[10px] text-gray-500 truncate">Area: {auth.coverage_area}</p>
+                  <div className="flex gap-3 mt-2 pt-1.5 border-t border-gray-100">
+                    <span className="text-[11px] font-bold text-amber-600">
                       Active: {auth.active_complaints_count || 0}
                     </span>
-                    <span className="text-[11px] font-medium text-paper">
+                    <span className="text-[11px] font-bold text-green-600">
                       Resolved: {auth.resolved_count || 0}
                     </span>
                   </div>
@@ -349,30 +349,30 @@ export const WorkspacePage: React.FC = () => {
           {/* Registered users */}
           <section>
             <div className="flex items-center justify-between mb-2.5 gap-2">
-              <h2 className="text-[15px] font-medium text-paper">
+              <h2 className="text-[15px] font-black text-gray-800">
                 Registered User Directory ({adminUsers.length})
               </h2>
               <button
                 onClick={() => setShowCreateAuthority(true)}
-                className="flex items-center gap-1 bg-acid-lime text-void rounded-md px-2.5 py-1.5 text-xs font-medium hover:brightness-90 shrink-0"
+                className="flex items-center gap-1 bg-blue-700 text-white rounded-md px-2.5 py-1.5 text-xs font-extrabold hover:bg-blue-800 shrink-0"
               >
                 <UserPlus size={14} /> Add Authority
               </button>
             </div>
 
-            <div className="bg-carbon border border-graphite rounded-xl overflow-hidden divide-y divide-graphite">
+            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden divide-y divide-gray-200">
               {adminUsers.map((u: { id: string; username: string; full_name?: string; role: string }) => (
                 <div key={u.id} className="flex items-center p-2.5">
-                  <span className="w-7 h-7 rounded-full bg-white/[0.05] flex items-center justify-center shrink-0">
-                    <UserIcon size={14} className="text-ash" />
+                  <span className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                    <UserIcon size={14} className="text-blue-700" />
                   </span>
                   <div className="flex-1 min-w-0 mx-2">
-                    <p className="text-[13px] font-medium text-paper truncate">
+                    <p className="text-[13px] font-bold text-gray-800 truncate">
                       {u.full_name || u.username}
                     </p>
-                    <p className="text-[11px] text-fog truncate">{u.username}</p>
+                    <p className="text-[11px] text-gray-500 truncate">{u.username}</p>
                   </div>
-                  <span className="bg-white/[0.05] text-fog text-[10px] font-medium px-2 py-0.5 rounded-[4px] shrink-0">
+                  <span className="bg-blue-100 text-blue-900 text-[10px] font-extrabold px-2 py-0.5 rounded shrink-0">
                     {u.role}
                   </span>
                 </div>
@@ -386,24 +386,24 @@ export const WorkspacePage: React.FC = () => {
       {role === "USER" && (
         <div className="space-y-5">
           <div>
-            <h1 className="text-xl font-medium text-paper tracking-[-0.012em]">Citizen Dashboard &amp; Reports</h1>
-            <p className="text-xs text-fog mt-1">
+            <h1 className="text-xl font-black text-gray-800">Citizen Dashboard &amp; Reports</h1>
+            <p className="text-xs text-gray-500 mt-1">
               Track issues you have reported across the city
             </p>
           </div>
 
           <section>
-            <h2 className="text-[15px] font-medium text-paper mb-2.5">
+            <h2 className="text-[15px] font-black text-gray-800 mb-2.5">
               My Reported Road Damage ({citizenMyReports.length})
             </h2>
 
             {complaintsLoading ? (
-              <div className="py-10 text-center text-sm text-fog font-medium">Loading your reports…</div>
+              <div className="py-10 text-center text-sm text-gray-400 font-semibold">Loading your reports…</div>
             ) : citizenMyReports.length === 0 ? (
-              <div className="border border-dashed border-smoke bg-white/[0.02] rounded-xl p-10 text-center">
-                <CameraOff size={44} className="text-ash mx-auto" />
-                <p className="text-[15px] font-medium text-paper mt-2">No Reports Filed Yet</p>
-                <p className="text-xs text-fog mt-1">
+              <div className="border-[1.5px] border-dashed border-gray-300 rounded-xl p-10 text-center bg-white">
+                <CameraOff size={44} className="text-gray-400 mx-auto" />
+                <p className="text-[15px] font-bold text-gray-800 mt-2">No Reports Filed Yet</p>
+                <p className="text-xs text-gray-500 mt-1">
                   Use the Inspect page to scan road damage and submit civic tickets.
                 </p>
               </div>
@@ -413,7 +413,7 @@ export const WorkspacePage: React.FC = () => {
                   <button
                     key={c.id}
                     onClick={() => setSelectedComplaint(c)}
-                    className="flex bg-carbon border border-graphite rounded-xl overflow-hidden text-left hover:border-smoke transition-colors h-[110px]"
+                    className="flex bg-white border border-gray-200 rounded-xl overflow-hidden text-left hover:border-blue-400 transition-colors h-[110px]"
                   >
                     <img
                       src={complaintImage(c)}
@@ -425,9 +425,9 @@ export const WorkspacePage: React.FC = () => {
                         <SeverityBadge severity={c.severity} size="sm" />
                         <StatusBadge status={c.status} size="sm" />
                       </div>
-                      <p className="text-[13px] font-medium text-paper truncate">{c.title}</p>
-                      <p className="text-[11px] text-fog truncate">{c.location_name}</p>
-                      <p className="text-[11px] font-medium text-mist truncate">
+                      <p className="text-[13px] font-bold text-gray-800 truncate">{c.title}</p>
+                      <p className="text-[11px] text-gray-500 truncate">{c.location_name}</p>
+                      <p className="text-[11px] font-semibold text-blue-700 truncate">
                         <Briefcase size={12} className="inline mr-1 -mt-0.5" />
                         {c.assigned_authority_name || "Awaiting Dispatch"}
                       </p>

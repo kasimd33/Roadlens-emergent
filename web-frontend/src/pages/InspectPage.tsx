@@ -247,15 +247,15 @@ export const InspectPage: React.FC = () => {
   return (
     <div className="space-y-5 max-w-3xl">
       <div>
-        <h1 className="text-xl font-medium text-paper tracking-[-0.012em]">AI Road Damage Scanner</h1>
-        <p className="text-xs text-fog mt-1">
+        <h1 className="text-xl font-black text-gray-800">AI Road Damage Scanner</h1>
+        <p className="text-xs text-gray-500 mt-1">
           Capture or select a road image to perform AI vision inspection
         </p>
       </div>
 
       {/* 1. Sample / capture selection */}
       <section>
-        <h2 className="text-[13px] font-medium text-paper mb-2">
+        <h2 className="text-[13px] font-black text-gray-800 mb-2">
           1. Select Test Image or Capture Live:
         </h2>
         <div className="flex flex-wrap gap-2">
@@ -265,16 +265,16 @@ export const InspectPage: React.FC = () => {
               <button
                 key={sample.id}
                 onClick={() => handleSelectPreset(sample)}
-                className={`border rounded-md px-3 py-2 text-left min-w-[110px] transition-colors bg-white/[0.02] ${
+                className={`border-[1.5px] rounded-lg px-3 py-2 text-left min-w-[110px] transition-colors ${
                   isSelected
-                    ? "border-acid-lime"
-                    : "border-graphite hover:border-smoke"
+                    ? "border-blue-700 bg-blue-100"
+                    : "border-gray-300 bg-white hover:border-gray-400"
                 }`}
               >
-                <span className={`block text-xs font-medium ${isSelected ? "text-paper" : "text-mist"}`}>
+                <span className={`block text-xs font-bold ${isSelected ? "text-blue-900" : "text-gray-800"}`}>
                   {sample.name}
                 </span>
-                <span className={`block text-[10px] font-medium mt-0.5 ${isSelected ? "text-acid-lime" : "text-fog"}`}>
+                <span className={`block text-[10px] font-semibold mt-0.5 ${isSelected ? "text-blue-700" : "text-gray-400"}`}>
                   {sample.tag}
                 </span>
               </button>
@@ -285,13 +285,13 @@ export const InspectPage: React.FC = () => {
         <div className="flex flex-col sm:flex-row gap-2.5 mt-3">
           <button
             onClick={() => cameraInputRef.current?.click()}
-            className="flex-1 flex items-center justify-center gap-2 border border-graphite text-mist text-[13px] font-medium rounded-md py-2.5 hover:border-smoke"
+            className="flex-1 flex items-center justify-center gap-2 bg-blue-700 text-white text-[13px] font-bold rounded-lg py-2.5 hover:bg-blue-800"
           >
             <Camera size={18} /> Live Camera
           </button>
           <button
             onClick={() => galleryInputRef.current?.click()}
-            className="flex-1 flex items-center justify-center gap-2 border border-graphite text-mist text-[13px] font-medium rounded-md py-2.5 hover:border-smoke"
+            className="flex-1 flex items-center justify-center gap-2 bg-blue-500 text-white text-[13px] font-bold rounded-lg py-2.5 hover:bg-blue-600"
           >
             <ImagePlus size={18} /> Upload Photo
           </button>
@@ -319,13 +319,13 @@ export const InspectPage: React.FC = () => {
           />
         </div>
         {imageError && (
-          <p className="text-xs font-medium text-coral-red mt-2" role="alert">{imageError}</p>
+          <p className="text-xs font-semibold text-red-600 mt-2" role="alert">{imageError}</p>
         )}
       </section>
 
       {/* 2. Preview + GPS */}
       <section>
-        <h2 className="text-[13px] font-medium text-paper mb-2">
+        <h2 className="text-[13px] font-black text-gray-800 mb-2">
           2. Visual Frame &amp; GPS Coordinates:
         </h2>
         <BoundingBoxView
@@ -338,8 +338,8 @@ export const InspectPage: React.FC = () => {
           height={260}
         />
 
-        <div className="flex items-center border border-white/[0.08] bg-white/[0.02] rounded-md p-3 mt-2.5">
-          <MapPin size={18} className="text-ash mr-2 shrink-0" />
+        <div className="flex items-center border border-gray-200 bg-white rounded-lg p-3 mt-2.5">
+          <MapPin size={18} className="text-red-600 mr-2 shrink-0" />
           <div className="flex-1 min-w-0">
             <input
               value={locationName}
@@ -348,10 +348,10 @@ export const InspectPage: React.FC = () => {
                 locationTouchedRef.current = true;
               }}
               placeholder="Location name"
-              className="w-full text-xs font-medium text-mist outline-none bg-transparent"
+              className="w-full text-xs font-bold text-gray-800 outline-none bg-transparent"
             />
             <p className="text-[10px] mt-0.5 truncate">
-              <span className={gpsLive ? "text-paper font-medium" : "text-fog font-medium"}>
+              <span className={gpsLive ? "text-green-600 font-bold" : "text-amber-600 font-bold"}>
                 {gpsStatus}
               </span>
               {gpsAccuracy != null ? ` • ±${gpsAccuracy.toFixed(0)}m` : ""} • Lat: {latitude.toFixed(4)}, Lng: {longitude.toFixed(4)}
@@ -365,7 +365,7 @@ export const InspectPage: React.FC = () => {
       <button
         onClick={handleRunAiAnalysis}
         disabled={analyzeMutation.isPending}
-        className="w-full flex items-center justify-center gap-2 bg-acid-lime text-void text-[15px] font-medium rounded-md py-3.5 hover:brightness-90 disabled:opacity-85"
+        className="w-full flex items-center justify-center gap-2 bg-[#1E3A8A] text-white text-[15px] font-black rounded-xl py-3.5 hover:bg-blue-900 disabled:opacity-85 shadow"
       >
         {analyzeMutation.isPending ? (
           <>
@@ -382,18 +382,18 @@ export const InspectPage: React.FC = () => {
 
       {/* AI failure state — honest error, retry offered */}
       {analyzeMutation.isError && (
-        <div className="flex items-center gap-3 bg-coral-red/10 border border-coral-red/30 rounded-md p-3">
-          <AlertTriangle size={22} className="text-coral-red shrink-0" />
+        <div className="flex items-center gap-3 bg-red-100 border-[1.5px] border-red-600 rounded-xl p-3">
+          <AlertTriangle size={22} className="text-red-600 shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-paper">AI Analysis Failed</p>
-            <p className="text-[11px] text-mist mt-0.5">
+            <p className="text-sm font-black text-red-600">AI Analysis Failed</p>
+            <p className="text-[11px] text-red-600 mt-0.5">
               {(analyzeMutation.error as Error)?.message ||
                 "Unable to analyze the image right now. Please try again."}
             </p>
           </div>
           <button
             onClick={handleRunAiAnalysis}
-            className="border border-graphite text-mist text-xs font-medium rounded-md px-4 py-2 hover:border-smoke shrink-0"
+            className="bg-red-600 text-white text-xs font-black rounded-lg px-4 py-2 hover:bg-red-700 shrink-0"
           >
             Retry
           </button>
@@ -402,17 +402,17 @@ export const InspectPage: React.FC = () => {
 
       {/* AI analysis result */}
       {analysisResult && (
-        <section className="bg-carbon border border-graphite rounded-xl p-4 space-y-3">
+        <section className="bg-white border-[1.5px] border-gray-300 rounded-2xl p-4 space-y-3">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5 min-w-0">
               {analysisResult.detected ? (
-                <CheckCircle2 size={24} className="text-acid-lime shrink-0" />
+                <CheckCircle2 size={24} className="text-green-600 shrink-0" />
               ) : (
-                <XCircle size={24} className="text-ash shrink-0" />
+                <XCircle size={24} className="text-gray-400 shrink-0" />
               )}
               <div className="min-w-0">
-                <p className="text-base font-medium text-paper truncate">{analysisResult.damage_type}</p>
-                <p className="text-xs text-fog">
+                <p className="text-base font-black text-gray-800 truncate">{analysisResult.damage_type}</p>
+                <p className="text-xs text-gray-500">
                   {analysisResult.detected
                     ? `AI Confidence: ${Math.round(analysisResult.confidence)}%`
                     : "Zero structural hazards detected"}
@@ -424,66 +424,66 @@ export const InspectPage: React.FC = () => {
 
           {analysisResult.detected ? (
             <div className="space-y-3">
-              <div className="bg-obsidian rounded-md p-3">
-                <p className="text-[10px] font-medium text-fog uppercase mb-1">Hazard Assessment:</p>
-                <p className="text-xs text-mist leading-relaxed">{analysisResult.severity_reason}</p>
+              <div className="bg-gray-100 rounded-lg p-3">
+                <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Hazard Assessment:</p>
+                <p className="text-xs text-gray-800 leading-relaxed">{analysisResult.severity_reason}</p>
               </div>
 
-              <p className="flex items-center gap-1.5 text-xs font-medium text-paper">
+              <p className="flex items-center gap-1.5 text-xs font-bold text-blue-700">
                 <Wrench size={16} />
                 Recommended: {analysisResult.recommended_action}
               </p>
-              <p className="flex items-center gap-1.5 text-xs font-medium text-acid-lime">
+              <p className="flex items-center gap-1.5 text-xs font-bold text-amber-600">
                 <Clock size={16} />
                 Target Dispatch: {analysisResult.estimated_repair_priority}
               </p>
               {analysisResult.estimated_cost_inr && (
-                <p className="flex items-center gap-1.5 text-xs font-medium text-paper">
+                <p className="flex items-center gap-1.5 text-xs font-bold text-green-700">
                   <IndianRupee size={16} />
                   Est. Repair Cost: ₹{analysisResult.estimated_cost_inr.replace(/^₹/, "")}
                 </p>
               )}
 
-              <div className="h-px bg-graphite" />
+              <div className="h-px bg-gray-200" />
 
-              <h3 className="text-[13px] font-medium text-paper">3. Submit Civic Complaint:</h3>
+              <h3 className="text-[13px] font-black text-gray-800">3. Submit Civic Complaint:</h3>
 
               <input
                 value={complaintTitle}
                 onChange={(e) => setComplaintTitle(e.target.value)}
                 placeholder="Complaint Title"
-                className="w-full border border-white/[0.08] rounded-md px-3 py-2.5 text-[13px] bg-white/[0.02] text-mist placeholder:text-fog focus:outline-none focus:border-mist"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-[13px] bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <input
                 value={landmark}
                 onChange={(e) => setLandmark(e.target.value)}
                 placeholder="Specific Landmark (e.g. In front of Metro Gate 2)"
-                className="w-full border border-white/[0.08] rounded-md px-3 py-2.5 text-[13px] bg-white/[0.02] text-mist placeholder:text-fog focus:outline-none focus:border-mist"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-[13px] bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <textarea
                 value={complaintDesc}
                 onChange={(e) => setComplaintDesc(e.target.value)}
                 placeholder="Additional Details / Citizen Remarks"
                 rows={2}
-                className="w-full border border-white/[0.08] rounded-md px-3 py-2.5 text-[13px] bg-white/[0.02] text-mist placeholder:text-fog focus:outline-none focus:border-mist resize-none"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-[13px] bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
               />
 
               {submitError && (
-                <p className="text-xs font-medium text-coral-red" role="alert">{submitError}</p>
+                <p className="text-xs font-semibold text-red-600" role="alert">{submitError}</p>
               )}
 
               {submittedSuccessId ? (
-                <div className="flex items-center gap-2.5 bg-obsidian rounded-md p-3">
-                  <CheckCheck size={24} className="text-pulse-green shrink-0" />
+                <div className="flex items-center gap-2.5 bg-green-100 rounded-lg p-3">
+                  <CheckCheck size={24} className="text-green-700 shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-medium text-paper">Complaint Successfully Filed!</p>
-                    <p className="text-[11px] text-mist mt-0.5">
+                    <p className="text-[13px] font-black text-green-800">Complaint Successfully Filed!</p>
+                    <p className="text-[11px] text-green-700 mt-0.5">
                       Ticket #{submittedSuccessId.slice(-5).toUpperCase()} auto-assigned to Authority.
                     </p>
                   </div>
                   <Link
                     to="/complaints"
-                    className="bg-paper text-void text-xs font-medium rounded-full px-3 py-1.5 hover:brightness-90 shrink-0"
+                    className="bg-blue-700 text-white text-xs font-bold rounded-md px-3 py-1.5 hover:bg-blue-800 shrink-0"
                   >
                     Track
                   </Link>
@@ -492,7 +492,7 @@ export const InspectPage: React.FC = () => {
                 <button
                   onClick={handleSubmitComplaint}
                   disabled={isSubmittingComplaint}
-                  className="w-full flex items-center justify-center gap-2 bg-paper text-void text-sm font-medium rounded-full py-3.5 hover:brightness-90 disabled:opacity-85"
+                  className="w-full flex items-center justify-center gap-2 bg-blue-700 text-white text-sm font-black rounded-lg py-3.5 hover:bg-blue-800 disabled:opacity-85"
                 >
                   {isSubmittingComplaint ? (
                     <Loader2 size={20} className="animate-spin" />
@@ -506,8 +506,8 @@ export const InspectPage: React.FC = () => {
               )}
             </div>
           ) : (
-            <div className="bg-obsidian rounded-md p-4">
-              <p className="text-[13px] text-mist text-center font-medium">
+            <div className="bg-gray-100 rounded-lg p-4">
+              <p className="text-[13px] text-gray-700 text-center font-semibold">
                 No supported road damage detected. The scanned surface appears structurally intact.
               </p>
             </div>

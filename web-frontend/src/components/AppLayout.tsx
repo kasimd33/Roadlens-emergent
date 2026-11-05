@@ -31,27 +31,27 @@ export const AppLayout: React.FC<{ children?: React.ReactNode }> = ({ children }
   const visibleTabs = TABS.filter((t) => t.roles.includes(role));
 
   return (
-    <div className="min-h-svh flex flex-col bg-void">
+    <div className="min-h-svh flex flex-col bg-[#F8F9FA]">
       <Navbar />
 
       {/* Desktop tab strip */}
-      <nav className="hidden sm:flex bg-void border-b border-graphite px-4 gap-1 sticky top-[57px] z-30">
+      <nav className="hidden sm:flex bg-white border-b border-gray-200 px-4 gap-1 sticky top-[57px] z-30">
         {visibleTabs.map(({ to, label, Icon }) => (
           <NavLink
             key={to}
             to={to}
             className={({ isActive }) =>
-              `flex items-center gap-2 px-4 py-2.5 text-[13px] font-normal border-b-2 -mb-px transition-colors ${
+              `flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b-2 -mb-px transition-colors ${
                 isActive
-                  ? "text-paper border-acid-lime"
-                  : "text-fog border-transparent hover:text-mist"
+                  ? "text-blue-700 border-blue-600"
+                  : "text-gray-500 border-transparent hover:text-gray-800"
               }`
             }
           >
             <Icon size={16} />
             {label}
             {to === "/notifications" && unreadCount > 0 && (
-              <span className="ml-0.5 bg-acid-lime text-void text-[10px] font-medium rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
+              <span className="ml-0.5 bg-red-600 text-white text-[10px] font-black rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
                 {unreadCount}
               </span>
             )}
@@ -64,22 +64,22 @@ export const AppLayout: React.FC<{ children?: React.ReactNode }> = ({ children }
       </main>
 
       {/* Mobile bottom tab bar */}
-      <nav className="sm:hidden fixed bottom-0 inset-x-0 bg-carbon border-t border-graphite flex z-40">
+      <nav className="sm:hidden fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 flex z-40">
         {visibleTabs.map(({ to, label, Icon }) => (
           <NavLink
             key={to}
             to={to}
             onClick={() => navigate(to)}
             className={({ isActive }) =>
-              `relative flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[11px] font-normal ${
-                isActive ? "text-paper" : "text-ash"
+              `relative flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[11px] font-bold ${
+                isActive ? "text-blue-700" : "text-gray-400"
               }`
             }
           >
             <Icon size={20} />
             {label}
             {to === "/notifications" && unreadCount > 0 && (
-              <span className="absolute top-1.5 right-[22%] bg-acid-lime text-void text-[9px] font-medium rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center">
+              <span className="absolute top-1.5 right-[22%] bg-red-600 text-white text-[9px] font-black rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center">
                 {unreadCount}
               </span>
             )}

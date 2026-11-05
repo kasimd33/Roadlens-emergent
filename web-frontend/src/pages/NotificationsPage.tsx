@@ -8,13 +8,13 @@ import type { Complaint, NotificationItem } from "../types";
 function typeStyle(type: string): { Icon: typeof Bell; color: string; label: string } {
   switch (type) {
     case "ASSIGNMENT":
-      return { Icon: GitBranch, color: "text-mist", label: "ASSIGNMENT" };
+      return { Icon: GitBranch, color: "text-blue-700", label: "ASSIGNMENT" };
     case "RESOLUTION":
-      return { Icon: CheckCheck, color: "text-pulse-green", label: "RESOLUTION" };
+      return { Icon: CheckCheck, color: "text-green-600", label: "RESOLUTION" };
     case "STATUS_CHANGE":
-      return { Icon: RefreshCw, color: "text-fog", label: "STATUS CHANGE" };
+      return { Icon: RefreshCw, color: "text-amber-600", label: "STATUS CHANGE" };
     default:
-      return { Icon: Bell, color: "text-mist", label: type.replace("_", " ") };
+      return { Icon: Bell, color: "text-blue-700", label: type.replace("_", " ") };
   }
 }
 
@@ -61,8 +61,8 @@ export const NotificationsPage: React.FC = () => {
     <div className="space-y-4 max-w-3xl">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-medium text-paper tracking-[-0.012em]">Civic Notification Center</h1>
-          <p className="text-xs text-fog mt-1">
+          <h1 className="text-xl font-black text-gray-800">Civic Notification Center</h1>
+          <p className="text-xs text-gray-500 mt-1">
             Real-time dispatch, lifecycle status &amp; resolution alerts
           </p>
         </div>
@@ -70,7 +70,7 @@ export const NotificationsPage: React.FC = () => {
           <button
             onClick={() => markAllMutation.mutate()}
             disabled={markAllMutation.isPending}
-            className="flex items-center gap-1.5 border border-graphite text-mist rounded-md px-2.5 py-1.5 text-[11px] font-medium hover:border-smoke shrink-0"
+            className="flex items-center gap-1.5 bg-blue-100 text-blue-900 rounded-md px-2.5 py-1.5 text-[11px] font-bold hover:bg-blue-200 shrink-0"
           >
             <CheckAll size={14} /> Mark All Read
           </button>
@@ -78,12 +78,12 @@ export const NotificationsPage: React.FC = () => {
       </div>
 
       {isLoading ? (
-        <div className="py-12 text-center text-sm text-fog font-medium">Loading notifications…</div>
+        <div className="py-12 text-center text-sm text-gray-400 font-semibold">Loading notifications…</div>
       ) : notifications.length === 0 ? (
-        <div className="border border-dashed border-smoke bg-white/[0.02] rounded-xl p-10 text-center mt-4">
-          <BellOff size={44} className="text-ash mx-auto" />
-          <p className="text-[15px] font-medium text-paper mt-2">No Notifications</p>
-          <p className="text-xs text-fog mt-1">
+        <div className="border-[1.5px] border-dashed border-gray-300 rounded-xl p-10 text-center bg-white mt-4">
+          <BellOff size={44} className="text-gray-400 mx-auto" />
+          <p className="text-[15px] font-bold text-gray-800 mt-2">No Notifications</p>
+          <p className="text-xs text-gray-500 mt-1">
             You&apos;re completely up to date with civic maintenance updates.
           </p>
         </div>
@@ -97,24 +97,24 @@ export const NotificationsPage: React.FC = () => {
                 onClick={() => handleNotificationPress(n)}
                 className={`w-full flex items-start gap-3 border rounded-xl p-3 text-left transition-colors ${
                   n.read
-                    ? "bg-carbon border-graphite hover:border-smoke"
-                    : "bg-obsidian border-graphite hover:border-smoke"
+                    ? "bg-white border-gray-200 hover:border-gray-300"
+                    : "bg-blue-50 border-blue-300 hover:border-blue-400"
                 }`}
               >
-                <span className="w-9 h-9 rounded-full bg-white/[0.05] flex items-center justify-center shrink-0">
+                <span className="w-9 h-9 rounded-full bg-white/70 flex items-center justify-center shrink-0">
                   <Icon size={20} className={color} />
                 </span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="flex-1 min-w-0 text-[13px] font-medium text-paper truncate">
+                    <p className="flex-1 min-w-0 text-[13px] font-extrabold text-gray-800 truncate">
                       {n.title}
                     </p>
-                    {!n.read && <span className="w-2 h-2 rounded-full bg-acid-lime shrink-0" />}
+                    {!n.read && <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0" />}
                   </div>
-                  <p className="text-xs text-mist leading-relaxed mt-0.5">{n.message}</p>
+                  <p className="text-xs text-gray-700 leading-relaxed mt-0.5">{n.message}</p>
                   <div className="flex items-center justify-between mt-1.5">
-                    <span className={`text-[10px] font-semibold ${color}`}>{label}</span>
-                    <span className="text-[10px] text-ash">
+                    <span className={`text-[10px] font-bold ${color}`}>{label}</span>
+                    <span className="text-[10px] text-gray-400">
                       {new Date(n.created_at).toLocaleTimeString([], {
                         hour: "2-digit",
                         minute: "2-digit",

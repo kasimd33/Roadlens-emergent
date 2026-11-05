@@ -28,7 +28,7 @@ export const StatusTimeline: React.FC<StatusTimelineProps> = ({ currentStatus, h
 
   return (
     <div className="my-4">
-      <h3 className="text-sm font-medium text-paper mb-4">Lifecycle Milestone Tracker</h3>
+      <h3 className="text-sm font-bold text-gray-800 mb-4">Lifecycle Milestone Tracker</h3>
       <div className="space-y-0">
         {STAGES.map((stage, idx) => {
           const isPassed = idx <= currentIndex;
@@ -39,36 +39,36 @@ export const StatusTimeline: React.FC<StatusTimelineProps> = ({ currentStatus, h
             <div key={stage.key} className="flex gap-3">
               <div className="flex flex-col items-center">
                 <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center z-10 flex-shrink-0 ${
-                  isCurrent ? "bg-void border-acid-lime" : isPassed ? "bg-mist border-mist" : "bg-obsidian border-graphite"
+                  isCurrent ? "bg-blue-600 border-blue-400" : isPassed ? "bg-green-600 border-green-500" : "bg-gray-100 border-gray-300"
                 }`}>
                   {isPassed ? (
-                    isCurrent ? <RefreshCw size={12} className="text-acid-lime" /> : <CheckCircle size={12} className="text-void" />
+                    isCurrent ? <RefreshCw size={12} className="text-white" /> : <CheckCircle size={12} className="text-white" />
                   ) : (
-                    <span className="text-[10px] font-medium text-ash">{idx + 1}</span>
+                    <span className="text-[10px] font-bold text-gray-400">{idx + 1}</span>
                   )}
                 </div>
                 {idx < STAGES.length - 1 && (
-                  <div className={`w-0.5 flex-1 my-0.5 ${idx < currentIndex ? "bg-smoke" : "bg-graphite"}`} style={{ minHeight: 20 }} />
+                  <div className={`w-0.5 flex-1 my-0.5 ${idx < currentIndex ? "bg-green-500" : "bg-gray-200"}`} style={{ minHeight: 20 }} />
                 )}
               </div>
               <div className="flex-1 pb-4">
                 <div className="flex items-center gap-2">
-                  <span className={`text-sm font-medium ${isCurrent ? "text-paper" : isPassed ? "text-mist" : "text-ash"}`}>
+                  <span className={`text-sm font-bold ${isCurrent ? "text-blue-600" : isPassed ? "text-gray-800" : "text-gray-400"}`}>
                     {stage.label}
                   </span>
                   {isCurrent && (
-                    <span className="text-[9px] font-medium bg-acid-lime/15 text-acid-lime px-1.5 py-0.5 rounded uppercase tracking-wide">Current Stage</span>
+                    <span className="text-[9px] font-black bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded uppercase">Current Stage</span>
                   )}
                 </div>
                 {historyEntry ? (
                   <div className="mt-1">
-                    <p className="text-xs text-mist">{historyEntry.notes || stage.desc}</p>
-                    <p className="text-[11px] text-fog mt-0.5 font-berkeley-mono">
+                    <p className="text-xs text-gray-600">{historyEntry.notes || stage.desc}</p>
+                    <p className="text-[11px] text-gray-400 mt-0.5">
                       By {historyEntry.changed_by_name} ({historyEntry.changed_by_role}) • {fmt(historyEntry.timestamp)}
                     </p>
                   </div>
                 ) : (
-                  <p className="text-xs text-ash italic mt-0.5">{stage.desc}</p>
+                  <p className="text-xs text-gray-400 italic mt-0.5">{stage.desc}</p>
                 )}
               </div>
             </div>

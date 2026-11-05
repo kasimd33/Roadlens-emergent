@@ -60,46 +60,46 @@ export const RepairModal: React.FC<RepairModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-void/80 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="bg-carbon w-full sm:max-w-lg rounded-t-xl sm:rounded-xl border border-graphite shadow-xl p-5 max-h-[92svh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl p-5 max-h-[92svh] overflow-y-auto">
         <div className="flex items-start justify-between mb-4">
           <div className="min-w-0 pr-2">
-            <h3 className="text-lg font-medium text-paper">Complete Repair &amp; Upload Proof</h3>
-            <p className="text-xs text-fog mt-0.5 truncate font-berkeley-mono">
+            <h3 className="text-lg font-black text-gray-800">Complete Repair &amp; Upload Proof</h3>
+            <p className="text-xs text-gray-500 mt-0.5 truncate">
               Ticket #{complaintId.slice(-5)?.toUpperCase() || complaintId}: {complaintTitle}
             </p>
           </div>
-          <button onClick={onClose} className="p-1 text-ash hover:text-mist shrink-0">
+          <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600 shrink-0">
             <X size={22} />
           </button>
         </div>
 
         {/* Proof-of-fix photo evidence */}
-        <p className="text-[13px] font-medium text-paper mb-2">Proof-of-Fix Photo Evidence:</p>
+        <p className="text-[13px] font-bold text-gray-800 mb-2">Proof-of-Fix Photo Evidence:</p>
         {selectedImage ? (
-          <div className="relative h-40 rounded-xl overflow-hidden border border-graphite">
+          <div className="relative h-40 rounded-xl overflow-hidden">
             <img src={selectedImage} alt="Repair proof" className="w-full h-full object-cover" />
-            <span className="absolute bottom-2 left-2 flex items-center gap-1 bg-acid-lime text-void text-[10px] font-medium px-2 py-1 rounded-sm">
+            <span className="absolute bottom-2 left-2 flex items-center gap-1 bg-green-600 text-white text-[10px] font-black px-2 py-1 rounded">
               <CheckCircle size={14} /> PROOF ATTACHED
             </span>
           </div>
         ) : (
-          <div className="h-28 border border-dashed border-smoke rounded-xl flex flex-col items-center justify-center">
-            <Camera size={36} className="text-ash" />
-            <p className="text-xs text-fog mt-1.5">No repair photo selected</p>
+          <div className="h-28 border-[1.5px] border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center">
+            <Camera size={36} className="text-gray-400" />
+            <p className="text-xs text-gray-400 mt-1.5">No repair photo selected</p>
           </div>
         )}
 
         <div className="flex gap-2.5 mt-3">
           <button
             onClick={() => cameraInputRef.current?.click()}
-            className="flex-1 flex items-center justify-center gap-1.5 bg-paper text-void text-[13px] font-medium rounded-md py-2.5 hover:brightness-90"
+            className="flex-1 flex items-center justify-center gap-1.5 bg-blue-700 text-white text-[13px] font-bold rounded-lg py-2.5 hover:bg-blue-800"
           >
             <Camera size={16} /> Take Photo
           </button>
           <button
             onClick={() => galleryInputRef.current?.click()}
-            className="flex-1 flex items-center justify-center gap-1.5 border border-graphite text-mist text-[13px] font-normal rounded-md py-2.5 hover:border-smoke"
+            className="flex-1 flex items-center justify-center gap-1.5 bg-blue-500 text-white text-[13px] font-bold rounded-lg py-2.5 hover:bg-blue-600"
           >
             <ImagePlus size={16} /> Gallery
           </button>
@@ -126,22 +126,22 @@ export const RepairModal: React.FC<RepairModalProps> = ({
           />
         </div>
         {imageError && (
-          <p className="text-xs font-medium text-coral-red mt-2" role="alert">{imageError}</p>
+          <p className="text-xs font-semibold text-red-600 mt-2" role="alert">{imageError}</p>
         )}
 
         {/* Demo proof samples */}
         <div className="flex items-center flex-wrap gap-2 mt-3">
-          <span className="text-[11px] font-normal text-fog">Demo Proof Samples:</span>
+          <span className="text-[11px] font-semibold text-gray-500">Demo Proof Samples:</span>
           {SAMPLE_REPAIR_PHOTOS.map((p, i) => {
             const isSelected = selectedImage === p.url;
             return (
               <button
                 key={i}
                 onClick={() => setSelectedImage(p.url)}
-                className={`border rounded-md px-2 py-1 text-[11px] font-normal transition-colors ${
+                className={`border rounded-md px-2 py-1 text-[11px] font-semibold ${
                   isSelected
-                    ? "border-acid-lime text-acid-lime"
-                    : "border-graphite text-mist hover:border-smoke"
+                    ? "border-green-600 bg-green-100 text-green-700"
+                    : "border-gray-300 text-gray-700 hover:border-gray-400"
                 }`}
               >
                 {p.name}
@@ -151,19 +151,19 @@ export const RepairModal: React.FC<RepairModalProps> = ({
         </div>
 
         {/* Notes */}
-        <p className="text-[13px] font-medium text-paper mt-4 mb-2">Field Work Completion Notes:</p>
+        <p className="text-[13px] font-bold text-gray-800 mt-4 mb-2">Field Work Completion Notes:</p>
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={3}
           placeholder="e.g. Cleared debris, applied 50mm hot asphalt layer, compacted with hydraulic roller."
-          className="w-full bg-white/[0.02] border border-white/[0.08] rounded-md px-3.5 py-2.5 text-[13px] text-mist placeholder:text-fog focus:outline-none focus:border-mist resize-none"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
         />
 
         <button
           onClick={handleSubmit}
           disabled={isSubmitting}
-          className="w-full flex items-center justify-center gap-2 bg-acid-lime text-void text-[15px] font-medium rounded-md py-3.5 mt-4 hover:brightness-90 disabled:opacity-80"
+          className="w-full flex items-center justify-center gap-2 bg-green-600 text-white text-[15px] font-black rounded-lg py-3.5 mt-4 hover:bg-green-700 disabled:opacity-80"
         >
           {isSubmitting ? (
             "Submitting…"

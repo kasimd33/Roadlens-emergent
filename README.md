@@ -48,13 +48,17 @@ npm run dev           # http://localhost:5173
 Point the frontend at the backend with `VITE_BACKEND_URL` in `web-frontend/.env.local`
 (defaults to `http://localhost:8001`).
 
-### Demo accounts (seeded on first backend start)
+### Demo accounts (require ALLOW_DEMO_DATA=true on the backend)
 
 | Role | Email | Password |
 |---|---|---|
 | Citizen | citizen@roadlens.gov | Citizen@123 |
 | Authority | authority@roadlens.gov | Authority@123 |
 | Admin | admin@roadlens.gov | Admin@123 |
+
+With demo mode enabled, the login page also shows one-click **Quick demo access**
+buttons (Citizen / Authority / Admin). Set `VITE_SHOW_DEMO_ACCESS=false` in Vercel
+to hide the buttons without touching the backend.
 
 ## Deploying to production
 
@@ -76,9 +80,10 @@ The repo includes a Render blueprint (`render.yaml`). In the Render dashboard:
 | `MONGO_URL` | your Atlas SRV connection string |
 | `GEMINI_API_KEY` | Google AI Studio key |
 | `CORS_ORIGINS` | your frontend URL (set after step 3, e.g. `https://roadlens.vercel.app`) |
+| `ALLOW_DEMO_DATA` | `true` to enable demo accounts + one-click demo login (omit in hardened deployments) |
 
-`JWT_SECRET` is auto-generated; `ALLOW_DEMO_DATA` stays unset (defaults to `false` — no
-demo accounts or quick-demo buttons in production).
+`JWT_SECRET` is auto-generated. With `ALLOW_DEMO_DATA=true` the three demo accounts in
+the table above are seeded on startup (insert-only — existing accounts are never touched).
 
 **3. Vercel** (web frontend)
 
@@ -90,8 +95,9 @@ Import the repo at [vercel.com](https://vercel.com), set the **Root Directory** 
 | `VITE_BACKEND_URL` | your Render URL, e.g. `https://roadlens-api.onrender.com` |
 
 Then go back to Render and set `CORS_ORIGINS` to your Vercel URL so the browser can
-call the API. No demo accounts exist in production — register a citizen account from
-the signup page; authority/admin accounts are created by an Admin after logging in.
+call the API. With `ALLOW_DEMO_DATA=true` on Render, the login page shows the Quick
+demo access buttons and the demo credentials work; without it, register a citizen
+account from the signup page — authority/admin accounts are created by an Admin.
 
 ## Security notes
 

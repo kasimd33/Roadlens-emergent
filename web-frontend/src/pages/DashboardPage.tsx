@@ -19,6 +19,7 @@ import { useAuth } from "../context/AuthContext";
 import { SeverityBadge } from "../components/SeverityBadge";
 import { StatusBadge } from "../components/StatusBadge";
 import { ComplaintDetailsModal } from "../components/ComplaintDetailsModal";
+import { AuthorityLoginAlert } from "../components/AuthorityLoginAlert";
 import type { Complaint } from "../types";
 
 const FALLBACK_IMG =
@@ -38,6 +39,7 @@ export const DashboardPage: React.FC = () => {
   const { role } = useAuth();
   const queryClient = useQueryClient();
   const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
+  const [alertDismissed, setAlertDismissed] = useState(false);
 
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["adminStats"],
@@ -53,6 +55,24 @@ export const DashboardPage: React.FC = () => {
     queryKey: ["authorities"],
     queryFn: () => api.getAuthorities(),
   });
+
+  // Authority login alert: HIGH-severity dispatches assigned to this division.
+  // Shown once per login (dismissal is keyed to the session's login marker).
+  const isAuthority = role === "AUTHORITY";
+  const { data: highAssigned = [] } = useQuery({
+    queryKey: ["authorityHighAlert"],
+    queryFn: () => api.getComplaints({ severity: "HIGH", assigned_to_me: true }),
+    enabled: isAuthority,
+  });
+  const loginId = sessionStorage.getItem("roadlens_login_id") || "";
+  const alertDismissedFor = sessionStorage.getItem("roadlens_auth_alert_dismissed") || "";
+  const showLoginAlert =
+    isAuthority && !alertDismissed && highAssigned.length > 0 && alertDismissedFor !== loginId;
+
+  const dismissLoginAlert = () => {
+    sessionStorage.setItem("roadlens_auth_alert_dismissed", loginId);
+    setAlertDismissed(true);
+  };
 
   const updateStatusMutation = useMutation({
     mutationFn: ({ id, status, notes, repairBase64, repairUrl }: {
@@ -258,6 +278,16 @@ export const DashboardPage: React.FC = () => {
           </div>
         )}
       </section>
+
+      <AuthorityLoginAlert
+        open={showLoginAlert}
+        complaints={highAssigned}
+        onClose={dismissLoginAlert}
+        onSelect={(complaint) => {
+          dismissLoginAlert();
+          setSelectedComplaint(complaint);
+        }}
+      />
 
       <ComplaintDetailsModal
         complaint={selectedComplaint}

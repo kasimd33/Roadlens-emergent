@@ -38,6 +38,8 @@ DIVISIONS = [
         "coverage_area": "MG Road, Residency Rd, Shivajinagar, Trinity Circle",
         "contact_email": "central.roads@roadlens.gov.in",
         "contact_phone": "+91 80 2234 5678",
+        "hq_latitude": 12.9756,
+        "hq_longitude": 77.6068,
         "active_complaints_count": 0,
         "resolved_count": 0,
     },
@@ -49,6 +51,8 @@ DIVISIONS = [
         "coverage_area": "Hebbal, Yelahanka, BEL Road, Airport Corridor (NH-44)",
         "contact_email": "north.highways@roadlens.gov.in",
         "contact_phone": "+91 80 2345 6789",
+        "hq_latitude": 13.0358,
+        "hq_longitude": 77.5970,
         "active_complaints_count": 0,
         "resolved_count": 0,
     },
@@ -60,6 +64,8 @@ DIVISIONS = [
         "coverage_area": "Jayanagar, BTM Layout, Bommasandra, Electronic City",
         "contact_email": "south.infra@roadlens.gov.in",
         "contact_phone": "+91 80 2456 7890",
+        "hq_latitude": 12.9250,
+        "hq_longitude": 77.5930,
         "active_complaints_count": 0,
         "resolved_count": 0,
     },
@@ -71,6 +77,8 @@ DIVISIONS = [
         "coverage_area": "Whitefield, Marathahalli, KR Puram, Old Airport Rd",
         "contact_email": "east.publicworks@roadlens.gov.in",
         "contact_phone": "+91 80 2567 8901",
+        "hq_latitude": 12.9569,
+        "hq_longitude": 77.7011,
         "active_complaints_count": 0,
         "resolved_count": 0,
     },
@@ -102,6 +110,11 @@ def main() -> None:
         result = db.authorities.update_one({"id": doc["id"]}, {"$setOnInsert": doc}, upsert=True)
         status = "created" if result.upserted_id else "already exists"
         print(f"division  {doc['id']}: {status}")
+        # Backfill HQ coordinates on divisions created before geo-routing existed
+        db.authorities.update_one(
+            {"id": doc["id"], "hq_latitude": {"$exists": False}},
+            {"$set": {"hq_latitude": division["hq_latitude"], "hq_longitude": division["hq_longitude"]}}
+        )
 
     # 2. One authority login per division
     emails = [e.strip().lower() for e in os.getenv("AUTH_EMAILS", "").split(",") if e.strip()]

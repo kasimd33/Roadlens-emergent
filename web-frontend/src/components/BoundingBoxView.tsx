@@ -27,7 +27,7 @@ export const BoundingBoxView: React.FC<BoundingBoxViewProps> = ({
 
   return (
     <div className="relative w-full rounded-xl overflow-hidden bg-gray-900" style={{ height }}>
-      <img src={src} alt="Road inspection" className="w-full h-full object-cover" />
+      <img src={src} alt="Road inspection" className="w-full h-full object-contain bg-gray-900" />
       {showBox && (
         <div
           className="absolute border-2 border-dashed rounded"

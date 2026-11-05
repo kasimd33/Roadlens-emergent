@@ -37,6 +37,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const applySession = useCallback(async (accessToken: string, userObj: PublicUser) => {
     saveAuthToken(accessToken);
+    // Fresh login marker: lets pages show once-per-login UI (e.g. authority alert)
+    sessionStorage.setItem("roadlens_login_id", `${userObj.id}-${Date.now()}`);
     setToken(accessToken);
     setUser(userObj);
   }, []);

@@ -5,6 +5,7 @@ import uuid
 import base64
 import hashlib
 import secrets
+import math
 import logging
 import ipaddress
 import random
@@ -280,6 +281,8 @@ class AuthorityModel(BaseModel):
     coverage_area: str
     contact_email: str
     contact_phone: str
+    hq_latitude: Optional[float] = None
+    hq_longitude: Optional[float] = None
     active_complaints_count: int = 0
     resolved_count: int = 0
     created_at: str
@@ -291,6 +294,8 @@ class AuthorityCreate(BaseModel):
     coverage_area: Optional[str] = None
     contact_email: Optional[str] = None
     contact_phone: Optional[str] = None
+    hq_latitude: Optional[float] = None
+    hq_longitude: Optional[float] = None
 
 
 # --- Helper Functions ---
@@ -561,6 +566,8 @@ async def startup_event():
             "coverage_area": "MG Road, Residency Rd, Shivajinagar, Trinity Circle",
             "contact_email": "central.roads@roadlens.gov.in",
             "contact_phone": "+91 80 2234 5678",
+            "hq_latitude": 12.9756,
+            "hq_longitude": 77.6068,
             "active_complaints_count": 0,
             "resolved_count": 12,
             "created_at": datetime.now(timezone.utc).isoformat()
@@ -573,6 +580,8 @@ async def startup_event():
             "coverage_area": "Hebbal, Yelahanka, BEL Road, Airport Corridor (NH-44)",
             "contact_email": "north.highways@roadlens.gov.in",
             "contact_phone": "+91 80 2345 6789",
+            "hq_latitude": 13.0358,
+            "hq_longitude": 77.5970,
             "active_complaints_count": 0,
             "resolved_count": 8,
             "created_at": datetime.now(timezone.utc).isoformat()
@@ -585,6 +594,8 @@ async def startup_event():
             "coverage_area": "Jayanagar, BTM Layout, Bommasandra, Electronic City",
             "contact_email": "south.infra@roadlens.gov.in",
             "contact_phone": "+91 80 2456 7890",
+            "hq_latitude": 12.9250,
+            "hq_longitude": 77.5930,
             "active_complaints_count": 0,
             "resolved_count": 15,
             "created_at": datetime.now(timezone.utc).isoformat()
@@ -597,6 +608,8 @@ async def startup_event():
             "coverage_area": "Whitefield, Marathahalli, KR Puram, Old Airport Rd",
             "contact_email": "east.publicworks@roadlens.gov.in",
             "contact_phone": "+91 80 2567 8901",
+            "hq_latitude": 12.9569,
+            "hq_longitude": 77.7011,
             "active_complaints_count": 0,
             "resolved_count": 6,
             "created_at": datetime.now(timezone.utc).isoformat()
@@ -605,6 +618,11 @@ async def startup_event():
 
     for auth in authorities_data:
         await db.authorities.update_one({"id": auth["id"]}, {"$setOnInsert": auth}, upsert=True)
+        # Backfill HQ coordinates on authorities created before geo-routing existed
+        await db.authorities.update_one(
+            {"id": auth["id"], "hq_latitude": {"$exists": False}},
+            {"$set": {"hq_latitude": auth["hq_latitude"], "hq_longitude": auth["hq_longitude"]}}
+        )
 
     # Seed Default Users for 3 roles
     seed_users = [
@@ -1169,7 +1187,7 @@ async def _analyze_with_openai_vision(system_prompt: str, user_text: str, image_
                         "type": "image_url",
                         "image_url": {
                             "url": f"data:image/jpeg;base64,{image_b64}",
-                            "detail": "low",
+                            "detail": "high",
                         },
                     },
                 ],
@@ -1231,10 +1249,15 @@ async def analyze_road_damage(
         '  "estimated_repair_priority": "P1 - Immediate Hazard (24h)" | "P2 - Moderate (72h)" | "P3 - Routine Maintenance",\n'
         '  "estimated_cost_inr": "e.g. 15000-35000 (realistic Indian municipal repair cost range in rupees)"\n'
         "}\n"
-        "Note: bounding_box x, y, width, height must be numbers between 0 and 100 representing percentage offsets within the image. "
-        "Severity rules for Indian roads: Open/uncovered manholes, deep water-filled potholes, or large potholes on busy arterial roads carrying two-wheeler and bus traffic = HIGH with P1. "
-        "Moderate longitudinal cracks, dry medium potholes, or damaged speed breakers without reflective markings = MEDIUM. "
-        "Minor surface raveling, faded patches, small fissures = LOW. "
+        "SEVERITY CALIBRATION (mandatory - pick the severity that matches THIS image, do not inflate):\n"
+        "- Crack: LOW for a single hairline or thin crack. MEDIUM only for wide, long, or networked (alligator) cracks spanning much of the lane. NEVER rate a crack HIGH - cracks are surface maintenance issues, not immediate hazards.\n"
+        "- Pothole: LOW for a small shallow pothole (under ~15cm). MEDIUM for a dry medium pothole. HIGH only if the pothole is deep (over ~5cm), large, water-filled (hidden depth), or sits in the live traffic lane of a busy arterial road.\n"
+        "- Surface Damage: LOW for minor raveling, faded patches or small fissures. MEDIUM for developing ruts or pothole-forming wear. NEVER rate surface wear HIGH.\n"
+        "- Open Manhole: always HIGH (P1) - life-threatening for two-wheelers.\n"
+        "- Waterlogging: MEDIUM for shallow standing water; HIGH only if deep or covering the traffic lane (hides potholes).\n"
+        "- Damaged Speed Breaker: MEDIUM if broken with sharp exposed edges; LOW if merely faded.\n"
+        "Conservative default: when genuinely unsure between two severity levels, choose the lower one.\n"
+        "bounding_box rules: x, y, width, height are percentages (0-100) of the image. The box must TIGHTLY enclose ONLY the damaged area itself (the pothole/crack/crack-network, plus a small margin) - NOT the whole road and NOT the whole image. For a single pothole or crack segment, width and height are typically well under 45% each. If damage appears in multiple spots, draw the box around the most hazardous one.\n"
         "Indian municipal repair costs are materially lower than Western costs — pothole patch: 8000-25000 INR; manhole cover replacement: 10000-40000 INR; speed breaker reconstruction with signage: 15000-50000 INR; stretch resurfacing: 100000+ INR."
     )
 
@@ -1345,13 +1368,44 @@ async def analyze_road_damage(
 
     detected = bool(ai_data.get("detected", False))
 
+    # Severity sanity clamp: the model sometimes inflates maintenance-level
+    # findings (hairline cracks, surface wear) to HIGH. These caps reflect
+    # municipal hazard classification - they are calibration, not fabrication.
+    SEVERITY_ORDER = {"NONE": 0, "LOW": 1, "MEDIUM": 2, "HIGH": 3}
+    MAX_SEVERITY_BY_DAMAGE = {
+        "crack": "MEDIUM",
+        "surface damage": "MEDIUM",
+        "damaged speed breaker": "MEDIUM",
+    }
+
+    def clamp_severity(damage_type: str, severity: str) -> tuple:
+        """Returns (severity, was_downgraded)."""
+        sev = str(severity or "MEDIUM").upper()
+        if sev not in SEVERITY_ORDER:
+            sev = "MEDIUM"
+        dt_lower = (damage_type or "").lower()
+        for type_key, cap in MAX_SEVERITY_BY_DAMAGE.items():
+            if type_key in dt_lower and SEVERITY_ORDER.get(sev, 2) > SEVERITY_ORDER[cap]:
+                return cap, True
+        return sev, False
+
     if detected:
         bbox_data = ai_data.get("bounding_box") or {}
+
+        def bbox_pct(value, default):
+            try:
+                return min(100.0, max(0.0, float(value)))
+            except (TypeError, ValueError):
+                return default
+
+        raw_w = bbox_pct(bbox_data.get("width"), 50.0)
+        raw_h = bbox_pct(bbox_data.get("height"), 35.0)
+        # Keep a minimum visible box and a sane offset inside the image
         bounding_box = BoundingBox(
-            x=float(bbox_data.get("x", 20.0)),
-            y=float(bbox_data.get("y", 30.0)),
-            width=float(bbox_data.get("width", 50.0)),
-            height=float(bbox_data.get("height", 35.0))
+            x=bbox_pct(bbox_data.get("x"), 20.0),
+            y=bbox_pct(bbox_data.get("y"), 30.0),
+            width=max(2.0, raw_w),
+            height=max(2.0, raw_h)
         )
         damage_type = ai_data.get("damage_type") or "Surface Damage"
         # Guard against the model marking detected=true but returning the no-damage label
@@ -1362,7 +1416,7 @@ async def analyze_road_damage(
             confidence = 0.0
             bounding_box = BoundingBox(x=0.0, y=0.0, width=0.0, height=0.0)
         else:
-            severity = ai_data.get("severity") or "MEDIUM"
+            severity, downgraded = clamp_severity(damage_type, ai_data.get("severity") or "MEDIUM")
             confidence = float(ai_data.get("confidence", 0.0))
     else:
         bounding_box = BoundingBox(x=0.0, y=0.0, width=0.0, height=0.0)
@@ -1373,6 +1427,8 @@ async def analyze_road_damage(
     inspection_id = f"insp-{uuid.uuid4().hex[:10]}"
     if detected:
         severity_reason = ai_data.get("severity_reason") or "Road surface damage detected."
+        if downgraded:
+            severity_reason += " (Calibrated: maintenance-level damage is capped at MEDIUM severity.)"
         recommended_action = ai_data.get("recommended_action") or "Municipal resurfacing inspection."
         repair_priority = ai_data.get("estimated_repair_priority") or "P2 - Standard"
         cost_inr = ai_data.get("estimated_cost_inr")
@@ -1409,25 +1465,87 @@ async def analyze_road_damage(
 # ==============================================================================
 # Complaints CRUD & Lifecycle Workflow
 # ==============================================================================
+def haversine_distance_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    """Great-circle distance between two points in kilometres."""
+    radius = 6371.0
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    d_phi = math.radians(lat2 - lat1)
+    d_lambda = math.radians(lng2 - lng1)
+    a = math.sin(d_phi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(d_lambda / 2) ** 2
+    return 2 * radius * math.asin(math.sqrt(a))
+
+
+GENERIC_PLACE_WORDS = {
+    "city", "town", "plaza", "park", "mall", "market", "station", "hospital",
+    "bank", "hotel", "bridge", "metro", "gate", "center", "centre", "junction",
+    "office", "campus", "complex", "apartment", "apartments", "north", "south",
+    "east", "west", "central", "india", "bengaluru", "bangalore", "near",
+}
+
+
+def locality_tokens(text: str) -> List[str]:
+    """Split a coverage-area / location string into comparable locality tokens,
+    dropping generic road/venue words so they never trigger a false match."""
+    tokens = []
+    for part in (text or "").lower().replace("(", " ").replace(")", " ").split(","):
+        part = re.sub(r"\b(road|rd|street|st|main|circle|layout|area|corridor|highway|nh-\d+|nh)\b", " ", part)
+        words = [w for w in re.split(r"[^a-z0-9]+", part) if len(w) >= 4 and w not in GENERIC_PLACE_WORDS]
+        tokens.extend(words)
+    return tokens
+
+
 def find_matching_authority(lat: float, lng: float, location_name: str, authorities_list: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
-    """Auto-route by locality keywords (Indian municipal zones)."""
+    """Auto-route a complaint to the right authority.
+
+    Matching tiers (first hit wins):
+      1. Same location name: word-boundary locality match against coverage_area
+         (e.g. "Near Hebbal Flyover, Bengaluru" -> authority covering Hebbal).
+      2. Zone direction keywords (central/north/south/east/west) shared by the
+         location name and the authority's zone.
+      3. Nearby towns: nearest authority by haversine distance from the damage
+         coordinates to the authority's HQ coordinates (within NEARBY_RADIUS_KM).
+      4. Coordinates present but far from every HQ -> nearest authority anyway
+         (closest jurisdiction is still the best hand-off).
+      5. No coordinates and no text match -> None (left UNASSIGNED for Admin).
+    """
+    authorities_list = [a for a in authorities_list if not a.get("deleted")]
+    if not authorities_list:
+        return None
+
     loc_lower = (location_name or "").lower()
+    loc_tokens = set(locality_tokens(loc_lower))
+
+    # Tier 1: locality token overlap with coverage_area
+    for auth in authorities_list:
+        auth_tokens = set(locality_tokens(auth.get("coverage_area", "")))
+        if loc_tokens & auth_tokens:
+            return auth
+
+    # Tier 2: zone direction keyword match
     for auth in authorities_list:
         zone_lower = auth.get("zone", "").lower()
-        cov_lower = auth.get("coverage_area", "").lower()
-        # Direct zone keyword match (central/north/south/east/west)
         for direction in ("central", "north", "south", "east", "west"):
             if direction in loc_lower and direction in zone_lower:
                 return auth
-        # Coverage-area locality match (Whitefield, Koramangala, Hebbal, ...)
-        cov_localities = [c.strip().lower() for c in cov_lower.split(",") if c.strip()]
-        for locality in cov_localities:
-            if locality and locality in loc_lower:
-                return auth
 
-    # Default to first available authority if coordinates exist
-    if authorities_list:
-        return authorities_list[0]
+    # Tier 3-4: proximity to authority HQ coordinates
+    def hq_coords(auth: Dict[str, Any]) -> Optional[tuple]:
+        hq_lat, hq_lng = auth.get("hq_latitude"), auth.get("hq_longitude")
+        if isinstance(hq_lat, (int, float)) and isinstance(hq_lng, (int, float)):
+            return (hq_lat, hq_lng)
+        return None
+
+    NEARBY_RADIUS_KM = 25.0
+    if lat is not None and lng is not None and (abs(lat) > 0.01 or abs(lng) > 0.01):
+        with_coords = [(auth, hq_coords(auth)) for auth in authorities_list]
+        with_coords = [(auth, hq) for auth, hq in with_coords if hq is not None]
+        if with_coords:
+            distances = [(haversine_distance_km(lat, lng, hq[0], hq[1]), auth) for auth, hq in with_coords]
+            nearest_distance, nearest_auth = min(distances, key=lambda d: d[0])
+            # Tier 4: nearest authority regardless of radius (best jurisdiction)
+            return nearest_auth
+
+    # Tier 5: cannot localise the damage - leave for Admin manual assignment
     return None
 
 
@@ -1484,7 +1602,7 @@ async def create_complaint(
             "changed_by_user_id": "system",
             "changed_by_name": "Auto-Dispatch Geo Engine",
             "changed_by_role": "SYSTEM",
-            "notes": f"Auto-assigned to {matched_auth['name']} based on {matched_auth.get('zone', 'zone')}.",
+            "notes": f"Auto-assigned to {matched_auth['name']} ({matched_auth.get('zone', 'zone')}) based on the damage location: {body.location_name}.",
             "timestamp": now_iso
         })
         # Increment active count for authority
@@ -1866,6 +1984,8 @@ async def create_authority(
         "coverage_area": (body.coverage_area or zone).strip(),
         "contact_email": (body.contact_email or "").strip(),
         "contact_phone": (body.contact_phone or "").strip(),
+        "hq_latitude": body.hq_latitude,
+        "hq_longitude": body.hq_longitude,
         "active_complaints_count": 0,
         "resolved_count": 0,
         "deleted": False,

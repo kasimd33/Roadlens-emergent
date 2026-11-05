@@ -90,23 +90,23 @@ export const ComplaintsPage: React.FC = () => {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-xl font-black text-gray-800">Civic Complaint Tracker</h1>
-        <p className="text-xs text-gray-500 mt-1">
+        <h1 className="text-xl font-medium text-paper tracking-[-0.012em]">Civic Complaint Tracker</h1>
+        <p className="text-xs text-fog mt-1">
           Real-time municipal lifecycle: SUBMITTED → CLOSED
         </p>
       </div>
 
       {/* Search */}
-      <div className="flex items-center border border-gray-300 bg-white rounded-lg px-3 py-2">
-        <Search size={18} className="text-gray-400 mr-2 shrink-0" />
+      <div className="flex items-center border border-white/[0.08] bg-white/[0.02] rounded-md px-3 py-2 focus-within:border-mist">
+        <Search size={18} className="text-ash mr-2 shrink-0" />
         <input
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search by street, damage type, or keyword..."
-          className="flex-1 text-[13px] outline-none bg-transparent text-gray-900 min-w-0"
+          className="flex-1 text-[13px] outline-none bg-transparent text-mist placeholder:text-fog min-w-0"
         />
         {searchQuery && (
-          <button onClick={() => setSearchQuery("")} className="p-1 text-gray-400 hover:text-gray-600">
+          <button onClick={() => setSearchQuery("")} className="p-1 text-ash hover:text-fog">
             <XCircle size={16} />
           </button>
         )}
@@ -120,10 +120,10 @@ export const ComplaintsPage: React.FC = () => {
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
-              className={`shrink-0 h-9 rounded-full border px-3.5 text-xs font-bold transition-colors ${
+              className={`shrink-0 h-8 rounded-full border px-3.5 text-xs font-medium transition-colors ${
                 isSelected
-                  ? "border-blue-700 bg-blue-700 text-white"
-                  : "border-gray-300 bg-white text-gray-800 hover:border-gray-400"
+                  ? "border-paper bg-paper text-void"
+                  : "border-graphite bg-white/[0.05] text-mist hover:border-smoke"
               }`}
             >
               {s === "ALL" ? "All Statuses" : s.replace("_", " ")}
@@ -140,10 +140,10 @@ export const ComplaintsPage: React.FC = () => {
             <button
               key={sev}
               onClick={() => setSeverityFilter(sev)}
-              className={`shrink-0 h-9 rounded-full border px-3.5 text-xs font-bold transition-colors ${
+              className={`shrink-0 h-8 rounded-full border px-3.5 text-xs font-medium transition-colors ${
                 isSelected
-                  ? "border-blue-500 bg-blue-100 text-blue-900"
-                  : "border-gray-300 bg-white text-gray-800 hover:border-gray-400"
+                  ? "border-paper bg-paper text-void"
+                  : "border-graphite bg-white/[0.05] text-mist hover:border-smoke"
               }`}
             >
               {sev === "ALL" ? "All Severities" : `${sev} Severity`}
@@ -154,12 +154,12 @@ export const ComplaintsPage: React.FC = () => {
 
       {/* List */}
       {isLoading ? (
-        <div className="py-12 text-center text-sm text-gray-400 font-semibold">Loading complaints…</div>
+        <div className="py-12 text-center text-sm text-fog font-medium">Loading complaints…</div>
       ) : complaints.length === 0 ? (
-        <div className="border-[1.5px] border-dashed border-gray-300 rounded-xl p-10 text-center bg-white mt-4">
-          <SearchX size={44} className="text-gray-400 mx-auto" />
-          <p className="text-[15px] font-bold text-gray-800 mt-2">No Complaints Match Filters</p>
-          <p className="text-xs text-gray-500 mt-1">
+        <div className="border border-dashed border-smoke bg-white/[0.02] rounded-xl p-10 text-center mt-4">
+          <SearchX size={44} className="text-ash mx-auto" />
+          <p className="text-[15px] font-medium text-paper mt-2">No Complaints Match Filters</p>
+          <p className="text-xs text-fog mt-1">
             Try selecting a different status filter or clearing your search query.
           </p>
         </div>
@@ -169,7 +169,7 @@ export const ComplaintsPage: React.FC = () => {
             <button
               key={item.id}
               onClick={() => setSelectedComplaint(item)}
-              className="flex bg-white border border-gray-200 rounded-xl overflow-hidden text-left hover:border-blue-400 hover:shadow-sm transition-all h-[114px]"
+              className="flex bg-carbon border border-graphite rounded-xl overflow-hidden text-left hover:border-smoke transition-colors h-[114px]"
             >
               <img
                 src={complaintImage(item)}
@@ -181,17 +181,17 @@ export const ComplaintsPage: React.FC = () => {
                   <SeverityBadge severity={item.severity} size="sm" />
                   <StatusBadge status={item.status} size="sm" />
                 </div>
-                <p className="text-[13px] font-extrabold text-gray-800 truncate">{item.title}</p>
+                <p className="text-[13px] font-medium text-paper truncate">{item.title}</p>
                 <div className="flex items-center min-w-0">
-                  <MapPin size={12} className="text-gray-400 mr-1 shrink-0" />
-                  <span className="text-[11px] text-gray-500 truncate">{item.location_name}</span>
+                  <MapPin size={12} className="text-ash mr-1 shrink-0" />
+                  <span className="text-[11px] text-fog truncate">{item.location_name}</span>
                 </div>
                 <div className="flex items-center justify-between gap-2">
-                  <span className="flex items-center min-w-0 text-[10px] font-bold text-blue-700">
+                  <span className="flex items-center min-w-0 text-[10px] font-medium text-mist">
                     <Building2 size={12} className="mr-1 shrink-0" />
                     <span className="truncate">{item.assigned_authority_name || "Unassigned"}</span>
                   </span>
-                  <span className="text-[10px] text-gray-400 shrink-0">
+                  <span className="text-[10px] text-ash shrink-0">
                     {new Date(item.created_at).toLocaleDateString(undefined, {
                       month: "short",
                       day: "numeric",

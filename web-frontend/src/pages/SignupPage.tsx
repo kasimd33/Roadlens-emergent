@@ -49,63 +49,63 @@ export const SignupPage: React.FC = () => {
     key: React.ReactNode,
     input: React.ReactNode,
   ) => (
-    <div className="flex items-center border border-gray-300 rounded-lg bg-white h-12 px-3">
+    <div className="flex items-center border border-white/[0.08] rounded-md bg-white/[0.02] h-12 px-3 focus-within:border-mist">
       {key}
       {input}
     </div>
   );
 
   return (
-    <div className="min-h-svh bg-[#1E3A8A] py-10 px-4">
+    <div className="min-h-svh bg-void py-10 px-4">
       <div className="max-w-md mx-auto">
         <div className="flex items-center justify-between mb-5">
-          <h1 className="text-white text-lg font-black">Create Account</h1>
-          <Link to="/login" className="text-blue-200 text-sm hover:underline">
+          <h1 className="text-paper text-lg font-medium tracking-[-0.012em]">Create Account</h1>
+          <Link to="/login" className="text-fog text-sm hover:text-mist">
             Back
           </Link>
         </div>
 
-        <form onSubmit={handleSignup} className="bg-[#F8F9FA] rounded-2xl p-6 shadow-xl">
-          <label className="block text-xs font-black text-gray-700 mb-1.5">Name</label>
+        <form onSubmit={handleSignup} className="bg-carbon rounded-xl p-8 border border-graphite shadow-subtle">
+          <label className="block text-xs font-normal text-mist mb-1.5">Name</label>
           {inputRow(
-            <UserIcon size={18} className="text-gray-400 mr-2 shrink-0" />,
+            <UserIcon size={18} className="text-ash mr-2 shrink-0" />,
             <input
               placeholder="Full name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="flex-1 text-sm outline-none bg-transparent text-gray-900"
+              className="flex-1 text-sm outline-none bg-transparent text-mist placeholder:text-fog"
             />,
           )}
 
-          <label className="block text-xs font-black text-gray-700 mb-1.5 mt-4">Email</label>
+          <label className="block text-xs font-normal text-mist mb-1.5 mt-4">Email</label>
           {inputRow(
-            <Mail size={18} className="text-gray-400 mr-2 shrink-0" />,
+            <Mail size={18} className="text-ash mr-2 shrink-0" />,
             <input
               type="email"
               autoComplete="email"
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="flex-1 text-sm outline-none bg-transparent text-gray-900"
+              className="flex-1 text-sm outline-none bg-transparent text-mist placeholder:text-fog"
             />,
           )}
 
-          <label className="block text-xs font-black text-gray-700 mb-1.5 mt-4">Password</label>
+          <label className="block text-xs font-normal text-mist mb-1.5 mt-4">Password</label>
           {inputRow(
             <>
-              <Lock size={18} className="text-gray-400 mr-2 shrink-0" />
+              <Lock size={18} className="text-ash mr-2 shrink-0" />
               <input
                 type={showPassword ? "text" : "password"}
                 autoComplete="new-password"
                 placeholder="Create a password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="flex-1 text-sm outline-none bg-transparent text-gray-900 min-w-0"
+                className="flex-1 text-sm outline-none bg-transparent text-mist placeholder:text-fog min-w-0"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((s) => !s)}
-                className="p-1 text-gray-400 hover:text-gray-600"
+                className="p-1 text-ash hover:text-mist"
                 aria-label={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -114,21 +114,21 @@ export const SignupPage: React.FC = () => {
             null,
           )}
 
-          <label className="block text-xs font-black text-gray-700 mb-1.5 mt-4">Confirm Password</label>
+          <label className="block text-xs font-normal text-mist mb-1.5 mt-4">Confirm Password</label>
           {inputRow(
-            <Lock size={18} className="text-gray-400 mr-2 shrink-0" />,
+            <Lock size={18} className="text-ash mr-2 shrink-0" />,
             <input
               type={showPassword ? "text" : "password"}
               autoComplete="new-password"
               placeholder="Re-enter password"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
-              className="flex-1 text-sm outline-none bg-transparent text-gray-900"
+              className="flex-1 text-sm outline-none bg-transparent text-mist placeholder:text-fog"
             />,
           )}
 
           {error && (
-            <p className="text-xs font-semibold text-red-600 mt-3" role="alert">
+            <p className="text-xs font-medium text-coral-red mt-3" role="alert">
               {error}
             </p>
           )}
@@ -136,22 +136,22 @@ export const SignupPage: React.FC = () => {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full h-12 rounded-lg bg-blue-700 text-white text-[15px] font-black mt-5 hover:bg-blue-800 disabled:opacity-80 flex items-center justify-center"
+            className="w-full h-12 rounded-md bg-acid-lime text-void text-[15px] font-medium tracking-[-0.011em] mt-5 hover:brightness-90 disabled:opacity-80 flex items-center justify-center"
           >
             {submitting ? <Loader2 size={20} className="animate-spin" /> : "Create Account"}
           </button>
 
           <div className="flex items-center my-4">
-            <div className="flex-1 h-px bg-gray-300" />
-            <span className="mx-3 text-xs font-semibold text-gray-400">or</span>
-            <div className="flex-1 h-px bg-gray-300" />
+            <div className="flex-1 h-px bg-graphite" />
+            <span className="mx-3 text-xs font-normal text-ash">or</span>
+            <div className="flex-1 h-px bg-graphite" />
           </div>
 
           <button
             type="button"
             onClick={handleGoogle}
             disabled={googleLoading}
-            className="w-full h-12 rounded-lg border-[1.5px] border-gray-300 bg-white flex items-center justify-center gap-2 text-sm font-bold text-gray-800 hover:bg-gray-50 disabled:opacity-80"
+            className="w-full h-12 rounded-md border border-graphite bg-transparent flex items-center justify-center gap-2 text-sm font-normal text-mist hover:border-smoke disabled:opacity-80"
           >
             {googleLoading ? (
               <Loader2 size={18} className="animate-spin" />
@@ -160,9 +160,9 @@ export const SignupPage: React.FC = () => {
             )}
           </button>
 
-          <p className="text-center text-[13px] text-gray-500 mt-5">
+          <p className="text-center text-[13px] text-fog mt-5">
             Already have an account?{" "}
-            <Link to="/login" className="text-blue-700 font-extrabold hover:underline">
+            <Link to="/login" className="text-mist underline hover:text-paper">
               Login
             </Link>
           </p>

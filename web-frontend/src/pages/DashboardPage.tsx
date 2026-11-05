@@ -114,28 +114,28 @@ export const DashboardPage: React.FC = () => {
       Icon: FileStack,
       value: stats?.total_complaints ?? 0,
       label: "Total Reported",
-      color: "text-blue-700",
+      emphasize: false,
       loading: statsLoading,
     },
     {
       Icon: Hammer,
       value: stats?.by_status?.IN_PROGRESS ?? 0,
       label: "In Progress",
-      color: "text-amber-600",
+      emphasize: false,
       loading: statsLoading,
     },
     {
       Icon: CheckCheck,
       value: `${stats?.resolution_rate_percent ?? 0}%`,
       label: "Resolution Rate",
-      color: "text-green-600",
+      emphasize: false,
       loading: statsLoading,
     },
     {
       Icon: AlertCircle,
       value: stats?.by_severity?.HIGH ?? 0,
       label: "High Severity",
-      color: "text-red-600",
+      emphasize: true,
       loading: statsLoading,
     },
   ];
@@ -143,17 +143,17 @@ export const DashboardPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Hero banner */}
-      <section className="bg-[#1E3A8A] rounded-2xl p-6 md:p-8 text-white shadow-lg">
-        <p className="text-blue-300 text-xs font-bold uppercase tracking-widest">
+      <section className="bg-obsidian rounded-xl p-6 md:p-8">
+        <p className="text-fog text-xs font-medium uppercase tracking-widest">
           Municipal Road Health
         </p>
-        <h1 className="text-2xl md:text-3xl font-black mt-1">AI Road Damage Scanner</h1>
-        <p className="text-blue-100 text-sm mt-2 max-w-2xl leading-relaxed">
+        <h1 className="text-paper text-2xl md:text-3xl font-medium tracking-[-0.012em] mt-1">AI Road Damage Scanner</h1>
+        <p className="text-mist text-sm mt-2 max-w-2xl leading-relaxed">
           Detect potholes, cracks &amp; surface degradation with GPT-5.4 Vision in real time.
         </p>
         <Link
           to="/inspect"
-          className="inline-flex items-center gap-2 bg-white text-[#1E3A8A] font-extrabold text-sm rounded-lg px-4 py-3 mt-5 hover:bg-blue-50 transition-colors"
+          className="inline-flex items-center gap-2 bg-acid-lime text-void font-medium text-sm rounded-md px-4 py-3 mt-5 hover:brightness-90 transition-all"
         >
           <Scan size={18} />
           New AI Inspection
@@ -162,17 +162,17 @@ export const DashboardPage: React.FC = () => {
 
       {/* Stats grid */}
       <section>
-        <h2 className="text-base font-black text-gray-800 mb-3">Civic Infrastructure Metrics</h2>
+        <h2 className="text-base font-medium text-paper mb-3">Civic Infrastructure Metrics</h2>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {statCards.map(({ Icon, value, label, color, loading }) => (
-            <div key={label} className="bg-white border border-gray-200 rounded-xl p-4">
+          {statCards.map(({ Icon, value, label, emphasize, loading }) => (
+            <div key={label} className="bg-carbon border border-graphite rounded-xl p-4">
               <div className="flex items-center justify-between mb-1.5">
-                <Icon size={20} className={color} />
-                <span className={`text-xl font-black ${color}`}>
+                <Icon size={20} className={emphasize ? "text-coral-red" : "text-ash"} />
+                <span className="text-xl font-medium text-paper">
                   {loading ? "…" : value}
                 </span>
               </div>
-              <p className="text-xs font-semibold text-gray-500">{label}</p>
+              <p className="text-xs font-normal text-fog">{label}</p>
             </div>
           ))}
         </div>
@@ -180,37 +180,37 @@ export const DashboardPage: React.FC = () => {
 
       {/* Quick actions */}
       <section>
-        <h2 className="text-base font-black text-gray-800 mb-3">Quick Actions</h2>
+        <h2 className="text-base font-medium text-paper mb-3">Quick Actions</h2>
         <div className="grid grid-cols-3 gap-3">
           <Link
             to="/inspect"
-            className="bg-white border border-gray-200 rounded-xl p-4 flex flex-col items-center hover:border-blue-400 transition-colors"
+            className="bg-carbon border border-graphite rounded-xl p-4 flex flex-col items-center hover:border-smoke transition-colors"
           >
-            <span className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center mb-2">
-              <AlertCircle size={20} className="text-red-600" />
+            <span className="w-10 h-10 rounded-full bg-white/[0.05] flex items-center justify-center mb-2">
+              <AlertCircle size={20} className="text-mist" />
             </span>
-            <span className="text-xs font-bold text-gray-800">Scan Pothole</span>
-            <span className="text-[10px] text-gray-500 mt-0.5">AI Camera</span>
+            <span className="text-xs font-medium text-mist">Scan Pothole</span>
+            <span className="text-[10px] text-ash mt-0.5">AI Camera</span>
           </Link>
           <Link
             to="/complaints"
-            className="bg-white border border-gray-200 rounded-xl p-4 flex flex-col items-center hover:border-blue-400 transition-colors"
+            className="bg-carbon border border-graphite rounded-xl p-4 flex flex-col items-center hover:border-smoke transition-colors"
           >
-            <span className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mb-2">
-              <GitFork size={20} className="text-blue-700" />
+            <span className="w-10 h-10 rounded-full bg-white/[0.05] flex items-center justify-center mb-2">
+              <GitFork size={20} className="text-mist" />
             </span>
-            <span className="text-xs font-bold text-gray-800">Track Status</span>
-            <span className="text-[10px] text-gray-500 mt-0.5">6 Stages</span>
+            <span className="text-xs font-medium text-mist">Track Status</span>
+            <span className="text-[10px] text-ash mt-0.5">6 Stages</span>
           </Link>
           <Link
             to={role === "USER" ? "/complaints" : "/workspace"}
-            className="bg-white border border-gray-200 rounded-xl p-4 flex flex-col items-center hover:border-blue-400 transition-colors"
+            className="bg-carbon border border-graphite rounded-xl p-4 flex flex-col items-center hover:border-smoke transition-colors"
           >
-            <span className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center mb-2">
-              <Briefcase size={20} className="text-amber-600" />
+            <span className="w-10 h-10 rounded-full bg-white/[0.05] flex items-center justify-center mb-2">
+              <Briefcase size={20} className="text-mist" />
             </span>
-            <span className="text-xs font-bold text-gray-800">Workspace</span>
-            <span className="text-[10px] text-gray-500 mt-0.5">{role}</span>
+            <span className="text-xs font-medium text-mist">Workspace</span>
+            <span className="text-[10px] text-ash mt-0.5">{role}</span>
           </Link>
         </div>
       </section>
@@ -218,22 +218,22 @@ export const DashboardPage: React.FC = () => {
       {/* Recent reports feed */}
       <section>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-base font-black text-gray-800">Recent Civic Reports</h2>
+          <h2 className="text-base font-medium text-paper">Recent Civic Reports</h2>
           <Link
             to="/complaints"
-            className="flex items-center text-[13px] font-bold text-blue-700 hover:underline"
+            className="flex items-center text-[13px] font-normal text-mist underline hover:text-paper"
           >
             View All <ChevronRight size={14} />
           </Link>
         </div>
 
         {complaintsLoading ? (
-          <div className="py-12 text-center text-sm text-gray-400 font-semibold">Loading reports…</div>
+          <div className="py-12 text-center text-sm text-fog font-normal">Loading reports…</div>
         ) : recentComplaints.length === 0 ? (
-          <div className="border-[1.5px] border-dashed border-gray-300 rounded-xl p-10 text-center bg-white">
-            <ShieldCheck size={40} className="text-gray-400 mx-auto" />
-            <p className="text-[15px] font-bold text-gray-800 mt-2">No Active Damage Reports</p>
-            <p className="text-xs text-gray-500 mt-1">
+          <div className="border border-dashed border-graphite rounded-xl p-10 text-center bg-carbon">
+            <ShieldCheck size={40} className="text-ash mx-auto" />
+            <p className="text-[15px] font-medium text-paper mt-2">No Active Damage Reports</p>
+            <p className="text-xs text-fog mt-1">
               All municipal road sectors are currently clear.
             </p>
           </div>
@@ -243,7 +243,7 @@ export const DashboardPage: React.FC = () => {
               <button
                 key={item.id}
                 onClick={() => setSelectedComplaint(item)}
-                className="flex bg-white border border-gray-200 rounded-xl overflow-hidden text-left hover:border-blue-400 hover:shadow-sm transition-all h-[110px]"
+                className="flex bg-carbon border border-graphite rounded-xl overflow-hidden text-left hover:border-smoke transition-colors h-[110px]"
               >
                 <img
                   src={complaintImage(item)}
@@ -255,17 +255,17 @@ export const DashboardPage: React.FC = () => {
                     <SeverityBadge severity={item.severity} size="sm" />
                     <StatusBadge status={item.status} size="sm" />
                   </div>
-                  <p className="text-[13px] font-bold text-gray-800 truncate">{item.title}</p>
+                  <p className="text-[13px] font-medium text-paper truncate">{item.title}</p>
                   <div className="flex items-center min-w-0">
-                    <MapPin size={12} className="text-gray-400 mr-1 shrink-0" />
-                    <span className="text-[11px] text-gray-500 truncate">{item.location_name}</span>
+                    <MapPin size={12} className="text-ash mr-1 shrink-0" />
+                    <span className="text-[11px] text-fog truncate">{item.location_name}</span>
                   </div>
                   <div className="flex items-center justify-between gap-2">
-                    <span className="flex items-center min-w-0 text-[10px] font-semibold text-blue-700">
+                    <span className="flex items-center min-w-0 text-[10px] font-normal text-fog">
                       <Building2 size={12} className="mr-1 shrink-0" />
                       <span className="truncate">{item.assigned_authority_name || "Unassigned"}</span>
                     </span>
-                    <span className="text-[10px] text-gray-400 shrink-0">
+                    <span className="text-[10px] text-ash shrink-0">
                       {new Date(item.created_at).toLocaleDateString(undefined, {
                         month: "short",
                         day: "numeric",

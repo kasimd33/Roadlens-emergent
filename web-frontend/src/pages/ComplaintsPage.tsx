@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Search, XCircle, MapPin, Building2, SearchX } from "lucide-react";
 import { api } from "../api/client";
+import { useAuth } from "../context/AuthContext";
 import { SeverityBadge } from "../components/SeverityBadge";
 import { StatusBadge } from "../components/StatusBadge";
 import { ComplaintDetailsModal } from "../components/ComplaintDetailsModal";
@@ -33,6 +34,7 @@ function complaintImage(c: Complaint): string {
 
 export const ComplaintsPage: React.FC = () => {
   const queryClient = useQueryClient();
+  const { role } = useAuth();
 
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [severityFilter, setSeverityFilter] = useState("ALL");
@@ -47,11 +49,6 @@ export const ComplaintsPage: React.FC = () => {
         severity: severityFilter !== "ALL" ? severityFilter : undefined,
         search: searchQuery || undefined,
       }),
-  });
-
-  const { data: authorities = [] } = useQuery({
-    queryKey: ["authorities"],
-    queryFn: () => api.getAuthorities(),
   });
 
   const updateStatusMutation = useMutation({
@@ -72,17 +69,6 @@ export const ComplaintsPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ["complaints"] });
       queryClient.invalidateQueries({ queryKey: ["adminStats"] });
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
-      setSelectedComplaint(updated);
-    },
-  });
-
-  const assignMutation = useMutation({
-    mutationFn: ({ id, authorityId, notes }: { id: string; authorityId: string; notes: string }) =>
-      api.assignComplaint(id, { authority_id: authorityId, notes }),
-    onSuccess: (updated) => {
-      queryClient.invalidateQueries({ queryKey: ["complaints"] });
-      queryClient.invalidateQueries({ queryKey: ["adminStats"] });
-      queryClient.invalidateQueries({ queryKey: ["authorities"] });
       setSelectedComplaint(updated);
     },
   });
@@ -189,7 +175,9 @@ export const ComplaintsPage: React.FC = () => {
                 <div className="flex items-center justify-between gap-2">
                   <span className="flex items-center min-w-0 text-[10px] font-bold text-blue-700">
                     <Building2 size={12} className="mr-1 shrink-0" />
-                    <span className="truncate">{item.assigned_authority_name || "Unassigned"}</span>
+                    <span className="truncate">
+                      {role === "USER" ? (item.assigned_authority_name ? "Nearby Field Officers" : "Unassigned") : (item.assigned_authority_name || "Unassigned")}
+                    </span>
                   </span>
                   <span className="text-[10px] text-gray-400 shrink-0">
                     {new Date(item.created_at).toLocaleDateString(undefined, {
@@ -206,7 +194,6 @@ export const ComplaintsPage: React.FC = () => {
 
       <ComplaintDetailsModal
         complaint={selectedComplaint}
-        authorities={authorities}
         onClose={() => setSelectedComplaint(null)}
         onStatusUpdate={async (status, notes, repairBase64, repairUrl) => {
           if (selectedComplaint) {
@@ -217,11 +204,6 @@ export const ComplaintsPage: React.FC = () => {
               repairBase64,
               repairUrl,
             });
-          }
-        }}
-        onAssign={async (authorityId, notes) => {
-          if (selectedComplaint) {
-            await assignMutation.mutateAsync({ id: selectedComplaint.id, authorityId, notes });
           }
         }}
       />

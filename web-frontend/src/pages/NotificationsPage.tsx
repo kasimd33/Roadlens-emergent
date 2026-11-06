@@ -27,11 +27,6 @@ export const NotificationsPage: React.FC = () => {
     queryFn: () => api.getNotifications(),
   });
 
-  const { data: authorities = [] } = useQuery({
-    queryKey: ["authorities"],
-    queryFn: () => api.getAuthorities(),
-  });
-
   const markAllMutation = useMutation({
     mutationFn: () => api.markAllNotificationsRead(),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
@@ -130,7 +125,6 @@ export const NotificationsPage: React.FC = () => {
 
       <ComplaintDetailsModal
         complaint={selectedComplaint}
-        authorities={authorities}
         onClose={() => setSelectedComplaint(null)}
         onStatusUpdate={async (status, notes, repairBase64, repairUrl) => {
           if (selectedComplaint) {
@@ -139,17 +133,6 @@ export const NotificationsPage: React.FC = () => {
               notes,
               repair_image_base64: repairBase64,
               repair_image_url: repairUrl,
-            });
-            queryClient.invalidateQueries({ queryKey: ["complaints"] });
-            queryClient.invalidateQueries({ queryKey: ["notifications"] });
-            setSelectedComplaint(await api.getComplaint(String(selectedComplaint.id)));
-          }
-        }}
-        onAssign={async (authorityId, notes) => {
-          if (selectedComplaint) {
-            await api.assignComplaint(String(selectedComplaint.id), {
-              authority_id: authorityId,
-              notes,
             });
             queryClient.invalidateQueries({ queryKey: ["complaints"] });
             queryClient.invalidateQueries({ queryKey: ["notifications"] });

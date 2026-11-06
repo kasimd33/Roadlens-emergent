@@ -51,11 +51,6 @@ export const DashboardPage: React.FC = () => {
     queryFn: () => api.getComplaints(),
   });
 
-  const { data: authorities = [] } = useQuery({
-    queryKey: ["authorities"],
-    queryFn: () => api.getAuthorities(),
-  });
-
   // Authority login alert: HIGH-severity dispatches assigned to this division.
   // Shown once per login (dismissal is keyed to the session's login marker).
   const isAuthority = role === "AUTHORITY";
@@ -92,17 +87,6 @@ export const DashboardPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ["complaints"] });
       queryClient.invalidateQueries({ queryKey: ["adminStats"] });
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
-      setSelectedComplaint(updated);
-    },
-  });
-
-  const assignMutation = useMutation({
-    mutationFn: ({ id, authorityId, notes }: { id: string; authorityId: string; notes: string }) =>
-      api.assignComplaint(id, { authority_id: authorityId, notes }),
-    onSuccess: (updated) => {
-      queryClient.invalidateQueries({ queryKey: ["complaints"] });
-      queryClient.invalidateQueries({ queryKey: ["adminStats"] });
-      queryClient.invalidateQueries({ queryKey: ["authorities"] });
       setSelectedComplaint(updated);
     },
   });
@@ -263,7 +247,9 @@ export const DashboardPage: React.FC = () => {
                   <div className="flex items-center justify-between gap-2">
                     <span className="flex items-center min-w-0 text-[10px] font-semibold text-blue-700">
                       <Building2 size={12} className="mr-1 shrink-0" />
-                      <span className="truncate">{item.assigned_authority_name || "Unassigned"}</span>
+                      <span className="truncate">
+                        {role === "USER" ? (item.assigned_authority_name ? "Nearby Field Officers" : "Unassigned") : (item.assigned_authority_name || "Unassigned")}
+                      </span>
                     </span>
                     <span className="text-[10px] text-gray-400 shrink-0">
                       {new Date(item.created_at).toLocaleDateString(undefined, {
@@ -291,7 +277,6 @@ export const DashboardPage: React.FC = () => {
 
       <ComplaintDetailsModal
         complaint={selectedComplaint}
-        authorities={authorities}
         onClose={() => setSelectedComplaint(null)}
         onStatusUpdate={async (status, notes, repairBase64, repairUrl) => {
           if (selectedComplaint) {
@@ -302,11 +287,6 @@ export const DashboardPage: React.FC = () => {
               repairBase64,
               repairUrl,
             });
-          }
-        }}
-        onAssign={async (authorityId, notes) => {
-          if (selectedComplaint) {
-            await assignMutation.mutateAsync({ id: selectedComplaint.id, authorityId, notes });
           }
         }}
       />

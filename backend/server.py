@@ -5,7 +5,7 @@ import uuid
 import base64
 import hashlib
 import secrets
-import math
+
 import logging
 import ipaddress
 import random
@@ -88,6 +88,28 @@ EMERGENT_OAUTH_SESSION_URL = "https://demobackend.emergentagent.com/auth/v1/env/
 # MongoDB async client
 client = AsyncIOMotorClient(MONGO_URL)
 db = client[DB_NAME]
+
+# --- Single Authority Model ---
+# RoadLens routes EVERY complaint (regardless of where it was reported from) to
+# this one authority division. Citizens see "nearby field officers"; the single
+# authority login (authority@roadlens.gov) acknowledges, progresses and resolves
+# everything. No other authority departments or authority logins exist.
+SINGLE_AUTHORITY = {
+    "id": "auth-main",
+    "code": "AUTH-MAIN",
+    "name": "Ballari City Roads Authority",
+    "zone": "All Ballari",
+    "coverage_area": "All zones and localities",
+    "contact_email": "authority@roadlens.gov.in",
+    "contact_phone": "+91 8392 200000",
+    "hq_latitude": 15.1394,
+    "hq_longitude": 76.9214,
+    "active_complaints_count": 0,
+    "resolved_count": 0,
+    "deleted": False,
+}
+SINGLE_AUTHORITY_ID = SINGLE_AUTHORITY["id"]
+SINGLE_AUTHORITY_LOGIN = "authority@roadlens.gov"
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=12)
@@ -609,6 +631,96 @@ async def migrate_bengaluru_demo_data():
     logger.info("Bengaluru -> Ballari migration complete.")
 
 
+async def migrate_to_single_authority():
+    """Fold every legacy zone division / authority login into the single authority.
+
+    Runs on every boot and is idempotent:
+      1. Upserts the single authority division.
+      2. Soft-deletes every other authority department (zone divisions and
+         auto-provisioned ones).
+      3. Deletes every AUTHORITY login except the single authority account, so
+         old zone credentials stop working.
+      4. Repoints all complaints to the single authority and promotes still
+         SUBMITTED tickets to ASSIGNED.
+      5. Recomputes the single authority's active-complaint counter.
+    """
+    await db.authorities.update_one(
+        {"id": SINGLE_AUTHORITY_ID},
+        {"$setOnInsert": {**SINGLE_AUTHORITY, "created_at": datetime.now(timezone.utc).isoformat()}},
+        upsert=True
+    )
+
+    # 2. Retire every other authority department
+    result = await db.authorities.update_many(
+        {"id": {"$ne": SINGLE_AUTHORITY_ID}, "deleted": {"$ne": True}},
+        {"$set": {"deleted": True}}
+    )
+    if result.modified_count:
+        logger.info(f"Retired {result.modified_count} legacy authority department(s).")
+
+    # 3. Remove every authority login except the single one
+    result = await db.users.delete_many({
+        "role": UserRole.AUTHORITY.value,
+        "username": {"$ne": SINGLE_AUTHORITY_LOGIN}
+    })
+    if result.deleted_count:
+        logger.info(f"Removed {result.deleted_count} legacy authority login(s).")
+
+    # 4. Point the surviving authority account at the single division
+    await db.users.update_many(
+        {"role": UserRole.AUTHORITY.value, "username": SINGLE_AUTHORITY_LOGIN},
+        {"$set": {"authority_id": SINGLE_AUTHORITY_ID, "authority_name": SINGLE_AUTHORITY["name"]}}
+    )
+
+    # 5a. Repoint complaints that already have a status; keep their lifecycle stage
+    result = await db.complaints.update_many(
+        {
+            "assigned_authority_id": {"$ne": SINGLE_AUTHORITY_ID},
+            "status": {"$ne": ComplaintStatus.SUBMITTED.value}
+        },
+        {"$set": {
+            "assigned_authority_id": SINGLE_AUTHORITY_ID,
+            "assigned_authority_name": SINGLE_AUTHORITY["name"],
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    # 5b. Unassigned tickets get promoted to ASSIGNED under the single authority
+    result2 = await db.complaints.update_many(
+        {
+            "$or": [
+                {"assigned_authority_id": {"$ne": SINGLE_AUTHORITY_ID}},
+                {"assigned_authority_id": {"$exists": False}}
+            ],
+            "status": ComplaintStatus.SUBMITTED.value
+        },
+        {"$set": {
+            "assigned_authority_id": SINGLE_AUTHORITY_ID,
+            "assigned_authority_name": SINGLE_AUTHORITY["name"],
+            "status": ComplaintStatus.ASSIGNED.value,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    if result.modified_count or result2.modified_count:
+        logger.info(
+            f"Repointed {result.modified_count + result2.modified_count} complaint(s) "
+            f"to the single authority."
+        )
+
+    # 6. Recompute active ticket counter for the single division
+    active = await db.complaints.count_documents({
+        "assigned_authority_id": SINGLE_AUTHORITY_ID,
+        "status": {"$in": [
+            ComplaintStatus.ASSIGNED.value,
+            ComplaintStatus.ACKNOWLEDGED.value,
+            ComplaintStatus.IN_PROGRESS.value
+        ]}
+    })
+    await db.authorities.update_one(
+        {"id": SINGLE_AUTHORITY_ID},
+        {"$set": {"active_complaints_count": active}}
+    )
+
+
 @app.on_event("startup")
 async def startup_event():
     logger.info("Initializing RoadLens Database and Indexes...")
@@ -649,79 +761,28 @@ async def startup_event():
     except Exception as e:
         logger.warning(f"Bengaluru -> Ballari migration note: {e}")
 
-    # Seed Demo Authorities (Indian municipal bodies) - demo environments only
+    # Single-authority migration: fold every legacy zone division and authority
+    # login into the one authority. Idempotent - safe to run on every boot.
+    try:
+        await migrate_to_single_authority()
+    except Exception as e:
+        logger.warning(f"Single-authority migration note: {e}")
+
+    # Seed the single Authority division - demo environments only
     if not ALLOW_DEMO_DATA:
         logger.info("ALLOW_DEMO_DATA not set - skipping demo seeding (production mode).")
         return
 
-    authorities_data = [
-        {
-            "id": "auth-downtown",
-            "code": "AUTH-CENTRAL",
-            "name": "Central Ballari Roads & Works Division",
-            "zone": "Central Ballari",
-            "coverage_area": "Gandhi Nagar, Cowl Bazaar, Brucepeta, Court Circle",
-            "contact_email": "central.roads@roadlens.gov.in",
-            "contact_phone": "+91 8392 223456",
-            "hq_latitude": 15.1394,
-            "hq_longitude": 76.9214,
-            "active_complaints_count": 0,
-            "resolved_count": 12,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        },
-        {
-            "id": "auth-north",
-            "code": "AUTH-NORTH",
-            "name": "North Ballari Municipal Highways",
-            "zone": "North Ballari",
-            "coverage_area": "Kudithini, Moka, Hospet Rd, NH-50 Corridor",
-            "contact_email": "north.highways@roadlens.gov.in",
-            "contact_phone": "+91 8392 234567",
-            "hq_latitude": 15.2050,
-            "hq_longitude": 76.8930,
-            "active_complaints_count": 0,
-            "resolved_count": 8,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        },
-        {
-            "id": "auth-south",
-            "code": "AUTH-SOUTH",
-            "name": "South Ballari Infrastructure Corp",
-            "zone": "South Ballari & Industrial Belt",
-            "coverage_area": "Kappagal, Allipuram, BSS Hill, Industrial Estate",
-            "contact_email": "south.infra@roadlens.gov.in",
-            "contact_phone": "+91 8392 245678",
-            "hq_latitude": 15.1050,
-            "hq_longitude": 76.9100,
-            "active_complaints_count": 0,
-            "resolved_count": 15,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        },
-        {
-            "id": "auth-suburban",
-            "code": "AUTH-EAST",
-            "name": "East Ballari Public Works",
-            "zone": "East Ballari & Tech Corridor",
-            "coverage_area": "Siruguppa Rd, Vaddaragatti, Bukkasagara, Moka Rd",
-            "contact_email": "east.publicworks@roadlens.gov.in",
-            "contact_phone": "+91 8392 256789",
-            "hq_latitude": 15.1600,
-            "hq_longitude": 76.9800,
-            "active_complaints_count": 0,
-            "resolved_count": 6,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        }
-    ]
+    authorities_data = [dict(SINGLE_AUTHORITY, created_at=datetime.now(timezone.utc).isoformat())]
 
     for auth in authorities_data:
-        await db.authorities.update_one({"id": auth["id"]}, {"$setOnInsert": auth}, upsert=True)
-        # Backfill HQ coordinates on authorities created before geo-routing existed
         await db.authorities.update_one(
-            {"id": auth["id"], "hq_latitude": {"$exists": False}},
-            {"$set": {"hq_latitude": auth["hq_latitude"], "hq_longitude": auth["hq_longitude"]}}
+            {"id": auth["id"]},
+            {"$setOnInsert": {**auth, "active_complaints_count": 0, "resolved_count": 0}},
+            upsert=True
         )
 
-    # Seed Default Users for 3 roles
+    # Seed Default Users for 3 roles (ONE authority login only)
     seed_users = [
         {
             "id": "user-citizen-1",
@@ -741,8 +802,8 @@ async def startup_event():
         },
         {
             "id": "user-authority-1",
-            "username": "authority@roadlens.gov",
-            "email": "authority@roadlens.gov",
+            "username": SINGLE_AUTHORITY_LOGIN,
+            "email": SINGLE_AUTHORITY_LOGIN,
             "password_hash": hash_password("Authority@123"),
             "full_name": "Priya Nair (Lead Field Engineer)",
             "name": "Priya Nair",
@@ -750,74 +811,8 @@ async def startup_event():
             "role": UserRole.AUTHORITY.value,
             "status": "ACTIVE",
             "auth_provider": "password",
-            "authority_id": "auth-downtown",
-            "authority_name": "Central Ballari Roads & Works Division",
-            "disabled": False,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        },
-        # One authority login per Ballari division, so each zone's complaints
-        # can be acknowledged/repaired/resolved by its own division account
-        {
-            "id": "user-authority-central",
-            "username": "authority.central@roadlens.gov",
-            "email": "authority.central@roadlens.gov",
-            "password_hash": hash_password("Central@123"),
-            "full_name": "Ravi Kumar (Central Ballari Field Engineer)",
-            "name": "Ravi Kumar",
-            "phone": "+91 98860 23456",
-            "role": UserRole.AUTHORITY.value,
-            "status": "ACTIVE",
-            "auth_provider": "password",
-            "authority_id": "auth-downtown",
-            "authority_name": "Central Ballari Roads & Works Division",
-            "disabled": False,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        },
-        {
-            "id": "user-authority-north",
-            "username": "authority.north@roadlens.gov",
-            "email": "authority.north@roadlens.gov",
-            "password_hash": hash_password("North@123"),
-            "full_name": "Sneha Patil (North Ballari Field Engineer)",
-            "name": "Sneha Patil",
-            "phone": "+91 98861 34567",
-            "role": UserRole.AUTHORITY.value,
-            "status": "ACTIVE",
-            "auth_provider": "password",
-            "authority_id": "auth-north",
-            "authority_name": "North Ballari Municipal Highways",
-            "disabled": False,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        },
-        {
-            "id": "user-authority-south",
-            "username": "authority.south@roadlens.gov",
-            "email": "authority.south@roadlens.gov",
-            "password_hash": hash_password("South@123"),
-            "full_name": "Kiran Reddy (South Ballari Field Engineer)",
-            "name": "Kiran Reddy",
-            "phone": "+91 98862 45678",
-            "role": UserRole.AUTHORITY.value,
-            "status": "ACTIVE",
-            "auth_provider": "password",
-            "authority_id": "auth-south",
-            "authority_name": "South Ballari Infrastructure Corp",
-            "disabled": False,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        },
-        {
-            "id": "user-authority-east",
-            "username": "authority.east@roadlens.gov",
-            "email": "authority.east@roadlens.gov",
-            "password_hash": hash_password("East@123"),
-            "full_name": "Meena Rao (East Ballari Field Engineer)",
-            "name": "Meena Rao",
-            "phone": "+91 98863 56789",
-            "role": UserRole.AUTHORITY.value,
-            "status": "ACTIVE",
-            "auth_provider": "password",
-            "authority_id": "auth-suburban",
-            "authority_name": "East Ballari Public Works",
+            "authority_id": SINGLE_AUTHORITY_ID,
+            "authority_name": SINGLE_AUTHORITY["name"],
             "disabled": False,
             "created_at": datetime.now(timezone.utc).isoformat()
         },
@@ -867,8 +862,8 @@ async def startup_event():
                 "location_name": "Gandhi Nagar Main Road & Court Circle, Central Ballari",
                 "landmark": "Near Court Circle Junction",
                 "status": ComplaintStatus.IN_PROGRESS.value,
-                "assigned_authority_id": "auth-downtown",
-                "assigned_authority_name": "Central Ballari Roads & Works Division",
+                "assigned_authority_id": SINGLE_AUTHORITY_ID,
+                "assigned_authority_name": SINGLE_AUTHORITY["name"],
                 "repair_evidence": None,
                 "status_history": [
                     {
@@ -888,7 +883,7 @@ async def startup_event():
                         "changed_by_user_id": "system",
                         "changed_by_name": "Auto-Dispatch Geo Engine",
                         "changed_by_role": "SYSTEM",
-                        "notes": "Auto-routed to Central Ballari Roads & Works Division based on Central Ballari location.",
+                        "notes": "Routed to field officers near Gandhi Nagar Main Road.",
                         "timestamp": (datetime.now(timezone.utc) - timedelta(hours=4, minutes=50)).isoformat()
                     },
                     {
@@ -933,8 +928,8 @@ async def startup_event():
                 "location_name": "Hospet Road (NH-50), Kudithini Stretch",
                 "landmark": "Near Kudithini Junction",
                 "status": ComplaintStatus.RESOLVED.value,
-                "assigned_authority_id": "auth-north",
-                "assigned_authority_name": "North Ballari Municipal Highways",
+                "assigned_authority_id": SINGLE_AUTHORITY_ID,
+                "assigned_authority_name": SINGLE_AUTHORITY["name"],
                 "repair_evidence": {
                     "image_url": "https://images.unsplash.com/photo-1635068741358-ab1b9813623f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzl8MHwxfHNlYXJjaHwxfHxwb3Rob2xlJTIwcm9hZCUyMGRhbWFnZSUyMGluc3BlY3Rpb258ZW58MHx8fHwxNzg5MDU0ODY2fDA&ixlib=rb-4.1.0&q=85",
                     "image_base64": None,
@@ -960,15 +955,15 @@ async def startup_event():
                         "changed_by_user_id": "system",
                         "changed_by_name": "Auto-Dispatch Geo Engine",
                         "changed_by_role": "SYSTEM",
-                        "notes": "Assigned to North Ballari Municipal Highways.",
+                        "notes": "Routed to field officers near Hospet Road (NH-50).",
                         "timestamp": (datetime.now(timezone.utc) - timedelta(days=1, hours=3)).isoformat()
                     },
                     {
                         "id": str(uuid.uuid4()),
                         "status": ComplaintStatus.ACKNOWLEDGED.value,
                         "previous_status": ComplaintStatus.ASSIGNED.value,
-                        "changed_by_user_id": "auth-north",
-                        "changed_by_name": "North Ballari Municipal Highways",
+                        "changed_by_user_id": "auth-main",
+                        "changed_by_name": "Ballari City Roads Authority",
                         "changed_by_role": "AUTHORITY",
                         "notes": "Acknowledged by road maintenance.",
                         "timestamp": (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
@@ -977,8 +972,8 @@ async def startup_event():
                         "id": str(uuid.uuid4()),
                         "status": ComplaintStatus.IN_PROGRESS.value,
                         "previous_status": ComplaintStatus.ACKNOWLEDGED.value,
-                        "changed_by_user_id": "auth-north",
-                        "changed_by_name": "North Ballari Municipal Highways",
+                        "changed_by_user_id": "auth-main",
+                        "changed_by_name": "Ballari City Roads Authority",
                         "changed_by_role": "AUTHORITY",
                         "notes": "Sealant application in progress.",
                         "timestamp": (datetime.now(timezone.utc) - timedelta(hours=6)).isoformat()
@@ -987,8 +982,8 @@ async def startup_event():
                         "id": str(uuid.uuid4()),
                         "status": ComplaintStatus.RESOLVED.value,
                         "previous_status": ComplaintStatus.IN_PROGRESS.value,
-                        "changed_by_user_id": "auth-north",
-                        "changed_by_name": "North Ballari Municipal Highways",
+                        "changed_by_user_id": "auth-main",
+                        "changed_by_name": "Ballari City Roads Authority",
                         "changed_by_role": "AUTHORITY",
                         "notes": "Repair completed with hot-pour sealant. Evidence verified.",
                         "timestamp": (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
@@ -1014,9 +1009,9 @@ async def startup_event():
                 "longitude": 76.9100,
                 "location_name": "Kappagal Road Industrial Area Access Road",
                 "landmark": "Near Tech Park Gate 4",
-                "status": ComplaintStatus.SUBMITTED.value,
-                "assigned_authority_id": None,
-                "assigned_authority_name": None,
+                "status": ComplaintStatus.ASSIGNED.value,
+                "assigned_authority_id": SINGLE_AUTHORITY_ID,
+                "assigned_authority_name": SINGLE_AUTHORITY["name"],
                 "repair_evidence": None,
                 "status_history": [
                     {
@@ -1036,15 +1031,17 @@ async def startup_event():
         ]
         await db.complaints.insert_many(sample_complaints)
 
-        # Update authority counts
-        await db.authorities.update_one({"id": "auth-downtown"}, {"$set": {"active_complaints_count": 1}})
-        await db.authorities.update_one({"id": "auth-north"}, {"$set": {"active_complaints_count": 0, "resolved_count": 9}})
+        # Update authority counts (comp-seed-1 & comp-seed-3 active, comp-seed-2 resolved)
+        await db.authorities.update_one(
+            {"id": SINGLE_AUTHORITY_ID},
+            {"$set": {"active_complaints_count": 2, "resolved_count": 1}}
+        )
 
         # Seed initial notification
         await create_notification(
             user_id="user-citizen-1",
             title="Work In Progress: Gandhi Nagar Main Road Pothole",
-            message="Central Ballari Roads & Works Division has started on-site repair at Gandhi Nagar Main Road & Court Circle.",
+            message="Field officers near you have started on-site repair at Gandhi Nagar Main Road & Court Circle.",
             notification_type="STATUS_CHANGE",
             complaint_id="comp-seed-1",
             severity="HIGH"
@@ -1052,7 +1049,7 @@ async def startup_event():
         await create_notification(
             user_id="user-citizen-1",
             title="Complaint Resolved: Hospet Road Crack",
-            message="North Ballari Municipal Highways resolved the ticket with hot-pour polymer sealant.",
+            message="Nearby field officers resolved the ticket with hot-pour polymer sealant.",
             notification_type="RESOLUTION",
             complaint_id="comp-seed-2",
             severity="MEDIUM"
@@ -1248,12 +1245,16 @@ async def create_authority_user(
     body: AuthorityUserCreate,
     current_user: Dict[str, Any] = Depends(require_roles(UserRole.ADMIN))
 ):
-    """Admin-only: create an AUTHORITY login account linked to an authority department."""
+    """Admin-only: create an additional AUTHORITY login under the single authority.
+
+    RoadLens runs with exactly one authority division, so every authority login
+    created here is linked to it regardless of the requested authority_id.
+    """
     email = body.email.lower().strip()
     if not email or "@" not in email or len(body.password) < 6:
         raise HTTPException(status_code=400, detail="Valid email and password (>= 6 chars) required")
 
-    authority = await db.authorities.find_one({"id": body.authority_id})
+    authority = await db.authorities.find_one({"id": SINGLE_AUTHORITY_ID, "deleted": {"$ne": True}})
     if not authority:
         raise HTTPException(status_code=404, detail="Authority department not found")
 
@@ -1272,8 +1273,8 @@ async def create_authority_user(
         "role": UserRole.AUTHORITY.value,
         "status": "ACTIVE",
         "auth_provider": "password",
-        "authority_id": authority["id"],
-        "authority_name": authority["name"],
+        "authority_id": SINGLE_AUTHORITY_ID,
+        "authority_name": SINGLE_AUTHORITY["name"],
         "disabled": False,
         "created_by": current_user["id"],
         "created_at": datetime.now(timezone.utc).isoformat()
@@ -1665,144 +1666,6 @@ async def analyze_road_damage(
 # ==============================================================================
 # Complaints CRUD & Lifecycle Workflow
 # ==============================================================================
-def haversine_distance_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
-    """Great-circle distance between two points in kilometres."""
-    radius = 6371.0
-    phi1, phi2 = math.radians(lat1), math.radians(lat2)
-    d_phi = math.radians(lat2 - lat1)
-    d_lambda = math.radians(lng2 - lng1)
-    a = math.sin(d_phi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(d_lambda / 2) ** 2
-    return 2 * radius * math.asin(math.sqrt(a))
-
-
-GENERIC_PLACE_WORDS = {
-    "city", "town", "plaza", "park", "mall", "market", "station", "hospital",
-    "bank", "hotel", "bridge", "metro", "gate", "center", "centre", "junction",
-    "office", "campus", "complex", "apartment", "apartments", "north", "south",
-    "east", "west", "central", "india", "ballari", "bellary", "near",
-}
-
-
-def locality_tokens(text: str) -> List[str]:
-    """Split a coverage-area / location string into comparable locality tokens,
-    dropping generic road/venue words so they never trigger a false match."""
-    tokens = []
-    for part in (text or "").lower().replace("(", " ").replace(")", " ").split(","):
-        part = re.sub(r"\b(road|rd|street|st|main|circle|layout|area|corridor|highway|nh-\d+|nh)\b", " ", part)
-        words = [w for w in re.split(r"[^a-z0-9]+", part) if len(w) >= 4 and w not in GENERIC_PLACE_WORDS]
-        tokens.extend(words)
-    return tokens
-
-
-def find_matching_authority(lat: float, lng: float, location_name: str, authorities_list: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
-    """Auto-route a complaint to the right authority.
-
-    Matching tiers (first hit wins):
-      1. Same location name: word-boundary locality match against coverage_area
-         (e.g. "Near Kudithini Junction, Ballari" -> authority covering Kudithini).
-      2. Zone direction keywords (central/north/south/east/west) shared by the
-         location name and the authority's zone. Only fires when the location
-         explicitly mentions the city, so "North Delhi" never matches
-         "North Ballari".
-      3. Nearby towns: nearest authority by haversine distance from the damage
-         coordinates to its HQ coordinates - but only within
-         NEARBY_RADIUS_KM, so damage reported from another city is never
-         handed to a far-away division.
-      4. No text match, or damage outside every jurisdiction -> None (left
-         UNASSIGNED for Admin, who can create an authority for that area).
-    """
-    authorities_list = [a for a in authorities_list if not a.get("deleted")]
-    if not authorities_list:
-        return None
-
-    loc_lower = (location_name or "").lower()
-    loc_tokens = set(locality_tokens(loc_lower))
-
-    # Tier 1: locality token overlap with coverage_area
-    for auth in authorities_list:
-        auth_tokens = set(locality_tokens(auth.get("coverage_area", "")))
-        if loc_tokens & auth_tokens:
-            return auth
-
-    # Tier 2: zone direction keyword match (city must be named in the location)
-    mentions_city = any(city in loc_lower for city in ("ballari", "bellary"))
-    if mentions_city:
-        for auth in authorities_list:
-            zone_lower = auth.get("zone", "").lower()
-            for direction in ("central", "north", "south", "east", "west"):
-                if direction in loc_lower and direction in zone_lower:
-                    return auth
-
-    # Tier 3: proximity to authority HQ coordinates, within jurisdiction
-    def hq_coords(auth: Dict[str, Any]) -> Optional[tuple]:
-        hq_lat, hq_lng = auth.get("hq_latitude"), auth.get("hq_longitude")
-        if isinstance(hq_lat, (int, float)) and isinstance(hq_lng, (int, float)):
-            return (hq_lat, hq_lng)
-        return None
-
-    NEARBY_RADIUS_KM = 40.0  # ~Ballari metro edge; other cities are farther
-    if lat is not None and lng is not None and (abs(lat) > 0.01 or abs(lng) > 0.01):
-        with_coords = [(auth, hq_coords(auth)) for auth in authorities_list]
-        with_coords = [(auth, hq) for auth, hq in with_coords if hq is not None]
-        if with_coords:
-            distances = [(haversine_distance_km(lat, lng, hq[0], hq[1]), auth) for auth, hq in with_coords]
-            nearest_distance, nearest_auth = min(distances, key=lambda d: d[0])
-            if nearest_distance <= NEARBY_RADIUS_KM:
-                return nearest_auth
-            # Outside every authority's jurisdiction - leave for Admin
-
-    # Tier 4: cannot localise the damage to a jurisdiction - Admin assigns manually
-    return None
-
-
-async def auto_provision_authority(location_name: str, lat: Optional[float], lng: Optional[float]) -> Optional[Dict[str, Any]]:
-    """Create (or reuse) an authority for a location outside existing jurisdictions.
-
-    Derives the city/area from the complaint's location name ("Sayyaji Rao
-    Road, Mysuru" -> "Mysuru"), provisions a division covering it, and pins
-    its HQ to the complaint's coordinates. Future complaints sharing any
-    locality token (including the city name) reuse this authority instead of
-    spawning duplicates. Flagged auto_provisioned=True so admins can spot,
-    rename, or retire these divisions later.
-    """
-    loc = (location_name or "").strip()
-    if not loc:
-        return None
-    parts = [p.strip() for p in loc.split(",") if p.strip()]
-    city = parts[-1] if parts else loc
-    if len(city) < 2:
-        return None
-
-    # Reuse an existing authority whose coverage/zone shares a locality token
-    loc_tokens = set(locality_tokens(loc))
-    existing = await db.authorities.find({"deleted": {"$ne": True}}).to_list(200)
-    for auth in existing:
-        auth_tokens = set(locality_tokens(auth.get("coverage_area", ""))) | set(locality_tokens(auth.get("zone", "")))
-        if loc_tokens & auth_tokens:
-            return auth
-
-    slug = re.sub(r"[^a-z0-9]+", "-", city.lower()).strip("-")[:24] or uuid.uuid4().hex[:8]
-    doc = {
-        "id": f"auth-{slug}-{uuid.uuid4().hex[:4]}",
-        "code": "AUTO-" + re.sub(r"[^A-Z0-9]+", "", city.upper())[:10],
-        "name": f"{city} Roads & Infrastructure Division",
-        "zone": city,
-        "coverage_area": loc,
-        "contact_email": "",
-        "contact_phone": "",
-        "hq_latitude": lat,
-        "hq_longitude": lng,
-        "active_complaints_count": 0,
-        "resolved_count": 0,
-        "deleted": False,
-        "auto_provisioned": True,
-        "created_at": datetime.now(timezone.utc).isoformat()
-    }
-    await db.authorities.insert_one(doc)
-    logger.info(f"Auto-provisioned authority '{doc['name']}' for complaint location: {loc}")
-    return doc
-
-
 @api_router.post("/complaints", status_code=201)
 async def create_complaint(
     body: ComplaintCreate,
@@ -1810,10 +1673,8 @@ async def create_complaint(
 ):
     """
     Submits a new civic road damage complaint.
-    Auto-assigns to the authority matching the damage location (locality
-    name, zone keywords, or nearest HQ within jurisdiction). If the location
-    belongs to no existing authority, a new division is provisioned for that
-    area on the spot and the complaint is assigned to it.
+    Every complaint is routed to the single authority division, wherever it
+    was reported from. Citizens see this as "routed to nearby field officers".
     """
     complaint_id = f"comp-{uuid.uuid4().hex[:10]}"
     now_iso = datetime.now(timezone.utc).isoformat()
@@ -1828,12 +1689,18 @@ async def create_complaint(
             detail="Cannot file a complaint: no supported road damage was detected in this inspection."
         )
 
-    # Find authorities for auto-assignment; if the damage is outside every
-    # jurisdiction, provision an authority for that location on the spot.
-    authorities = await db.authorities.find({"deleted": {"$ne": True}}).to_list(100)
-    matched_auth = find_matching_authority(body.latitude, body.longitude, body.location_name, authorities)
+    # Single-authority routing: every complaint goes to the one authority
+    # division, regardless of where it was reported from. (Citizens see this
+    # as "routed to nearby field officers".)
+    matched_auth = await db.authorities.find_one({"id": SINGLE_AUTHORITY_ID, "deleted": {"$ne": True}})
     if not matched_auth:
-        matched_auth = await auto_provision_authority(body.location_name, body.latitude, body.longitude)
+        # Self-heal: recreate the division if it was ever removed
+        matched_auth = dict(SINGLE_AUTHORITY, created_at=datetime.now(timezone.utc).isoformat())
+        await db.authorities.update_one(
+            {"id": SINGLE_AUTHORITY_ID},
+            {"$setOnInsert": matched_auth},
+            upsert=True
+        )
 
     status_val = ComplaintStatus.ASSIGNED.value if matched_auth else ComplaintStatus.SUBMITTED.value
     assigned_auth_id = matched_auth["id"] if matched_auth else None
@@ -1861,9 +1728,7 @@ async def create_complaint(
             "changed_by_user_id": "system",
             "changed_by_name": "Auto-Dispatch Geo Engine",
             "changed_by_role": "SYSTEM",
-            "notes": f"Auto-assigned to {matched_auth['name']} ({matched_auth.get('zone', 'zone')}) based on the damage location: {body.location_name}." + (
-                " New division auto-created for this area." if matched_auth.get("auto_provisioned") else ""
-            ),
+            "notes": f"Routed to field officers near {body.location_name}.",
             "timestamp": now_iso
         })
         # Increment active count for authority
@@ -1951,7 +1816,7 @@ async def list_complaints(
             query["user_id"] = current_user["id"]
         elif assigned_to_me or current_user.get("role") == UserRole.AUTHORITY.value and assigned_to_me:
             # Check authority id
-            user_auth_id = current_user.get("authority_id") or "auth-downtown"
+            user_auth_id = current_user.get("authority_id") or SINGLE_AUTHORITY_ID
             query["assigned_authority_id"] = user_auth_id
 
     if search:
@@ -2226,35 +2091,11 @@ async def create_authority(
     body: AuthorityCreate,
     current_user: Dict[str, Any] = Depends(require_roles(UserRole.ADMIN))
 ):
-    """Admin-only: create a new authority department with a name and coverage zone."""
-    name = body.name.strip()
-    zone = body.zone.strip()
-    if not name or not zone:
-        raise HTTPException(status_code=400, detail="Department name and zone are required")
-
-    # Generate a stable id + human-readable code from the name
-    slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")[:24] or uuid.uuid4().hex[:8]
-    authority_id = f"auth-{slug}-{uuid.uuid4().hex[:4]}"
-    code = "AUTH-" + re.sub(r"[^A-Z0-9]+", "", name.upper())[:10]
-
-    doc = {
-        "id": authority_id,
-        "code": code or f"AUTH-{uuid.uuid4().hex[:5].upper()}",
-        "name": name,
-        "zone": zone,
-        "coverage_area": (body.coverage_area or zone).strip(),
-        "contact_email": (body.contact_email or "").strip(),
-        "contact_phone": (body.contact_phone or "").strip(),
-        "hq_latitude": body.hq_latitude,
-        "hq_longitude": body.hq_longitude,
-        "active_complaints_count": 0,
-        "resolved_count": 0,
-        "deleted": False,
-        "created_at": datetime.now(timezone.utc).isoformat()
-    }
-    await db.authorities.insert_one(doc)
-    doc.pop("_id", None)
-    return doc
+    """Blocked: RoadLens runs with exactly ONE authority department."""
+    raise HTTPException(
+        status_code=403,
+        detail="RoadLens uses a single authority division. Creating additional authorities is not supported."
+    )
 
 
 @api_router.delete("/authorities/{authority_id}")
@@ -2262,26 +2103,11 @@ async def delete_authority(
     authority_id: str,
     current_user: Dict[str, Any] = Depends(require_roles(UserRole.ADMIN))
 ):
-    """Admin-only: remove an authority department (soft delete). Blocked if it has active complaints."""
-    authority = await db.authorities.find_one({"id": authority_id, "deleted": {"$ne": True}})
-    if not authority:
-        raise HTTPException(status_code=404, detail="Authority department not found")
-
-    active = await db.complaints.count_documents({
-        "assigned_authority_id": authority_id,
-        "status": {"$nin": [ComplaintStatus.RESOLVED.value, ComplaintStatus.CLOSED.value]}
-    })
-    if active > 0:
-        raise HTTPException(
-            status_code=409,
-            detail=f"Cannot remove: {active} active complaint(s) are still assigned. Reassign or resolve them first."
-        )
-
-    await db.authorities.update_one(
-        {"id": authority_id},
-        {"$set": {"deleted": True, "deleted_at": datetime.now(timezone.utc).isoformat()}}
+    """Blocked: the single authority division can never be removed."""
+    raise HTTPException(
+        status_code=403,
+        detail="The single authority division cannot be removed."
     )
-    return {"message": "Authority department removed", "id": authority_id}
 
 
 @api_router.get("/admin/stats")
@@ -2306,7 +2132,7 @@ async def get_admin_stats(current_user: Dict[str, Any] = Depends(get_current_use
     medium = await db.complaints.count_documents({**scope, "severity": SeverityLevel.MEDIUM.value})
     low = await db.complaints.count_documents({**scope, "severity": SeverityLevel.LOW.value})
 
-    authorities_count = await db.authorities.count_documents({})
+    authorities_count = await db.authorities.count_documents({"deleted": {"$ne": True}})
     users_count = await db.users.count_documents({})
 
     resolution_rate = round(((resolved + closed) / max(total, 1)) * 100, 1)

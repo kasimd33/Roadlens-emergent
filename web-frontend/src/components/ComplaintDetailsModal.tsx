@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { ArrowLeft, MapPin, Building2, CheckCircle, Loader2, Camera } from "lucide-react";
-import type { Complaint, Authority } from "../types";
+import type { Complaint } from "../types";
 import { SeverityBadge } from "./SeverityBadge";
 import { StatusBadge } from "./StatusBadge";
 import { BoundingBoxView } from "./BoundingBoxView";
@@ -9,21 +9,16 @@ import { useAuth } from "../context/AuthContext";
 
 interface Props {
   complaint: Complaint | null;
-  authorities: Authority[];
   onClose: () => void;
   onStatusUpdate: (status: string, notes?: string, repairBase64?: string, repairUrl?: string) => Promise<void>;
-  onAssign: (authorityId: string, notes: string) => Promise<void>;
 }
 
-export const ComplaintDetailsModal: React.FC<Props> = ({ complaint, authorities, onClose, onStatusUpdate, onAssign }) => {
+export const ComplaintDetailsModal: React.FC<Props> = ({ complaint, onClose, onStatusUpdate }) => {
   const { role } = useAuth();
   const [isActing, setIsActing] = useState(false);
   const [showRepair, setShowRepair] = useState(false);
-  const [showAssign, setShowAssign] = useState(false);
   const [repairNotes, setRepairNotes] = useState("");
   const [repairImageUrl, setRepairImageUrl] = useState("");
-  const [assignAuthId, setAssignAuthId] = useState("");
-  const [assignNotes, setAssignNotes] = useState("");
 
   if (!complaint) return null;
 
@@ -37,15 +32,6 @@ export const ComplaintDetailsModal: React.FC<Props> = ({ complaint, authorities,
     try {
       await onStatusUpdate("RESOLVED", repairNotes, undefined, repairImageUrl || undefined);
       setShowRepair(false);
-    } finally { setIsActing(false); }
-  };
-
-  const handleAssignSubmit = async () => {
-    if (!assignAuthId) return;
-    setIsActing(true);
-    try {
-      await onAssign(assignAuthId, assignNotes);
-      setShowAssign(false);
     } finally { setIsActing(false); }
   };
 
@@ -109,14 +95,18 @@ export const ComplaintDetailsModal: React.FC<Props> = ({ complaint, authorities,
           <div className="border-t pt-3 flex items-center gap-2">
             <Building2 size={18} className="text-blue-600 shrink-0" />
             <div className="flex-1">
-              <p className="text-sm font-bold text-gray-800">{complaint.assigned_authority_name || "UNASSIGNED (Pending Dispatch)"}</p>
-              <p className="text-xs text-gray-500">{complaint.assigned_authority_name ? "Assigned Municipal Unit" : "Awaiting Admin Routing"}</p>
+              {role === "USER" ? (
+                <>
+                  <p className="text-sm font-bold text-gray-800">Nearby Municipal Officers</p>
+                  <p className="text-xs text-gray-500">{complaint.assigned_authority_name ? "Routed to officers near your location" : "Awaiting Routing"}</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-bold text-gray-800">{complaint.assigned_authority_name || "UNASSIGNED (Pending Dispatch)"}</p>
+                  <p className="text-xs text-gray-500">{complaint.assigned_authority_name ? "Assigned Municipal Unit" : "Awaiting Admin Routing"}</p>
+                </>
+              )}
             </div>
-            {role === "ADMIN" && (
-              <button onClick={() => setShowAssign(true)} className="text-xs font-bold bg-blue-100 text-blue-700 px-2 py-1 rounded-lg hover:bg-blue-200">
-                {complaint.assigned_authority_id ? "Reassign" : "Assign"}
-              </button>
-            )}
           </div>
         </div>
 
@@ -189,9 +179,6 @@ export const ComplaintDetailsModal: React.FC<Props> = ({ complaint, authorities,
 
           {role === "ADMIN" && (
             <div className="flex gap-2">
-              <button onClick={() => setShowAssign(true)} className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white rounded-xl py-3 font-bold text-sm hover:bg-blue-700">
-                Assign Authority
-              </button>
               {complaint.status !== "CLOSED" && (
                 <button onClick={() => handleAction("CLOSED", "Administrative closure following municipal review.")} disabled={isActing} className="flex-1 flex items-center justify-center gap-2 bg-gray-800 text-white rounded-xl py-3 font-bold text-sm hover:bg-gray-900 disabled:opacity-70">
                   {isActing ? <Loader2 size={16} className="animate-spin" /> : "Close Ticket"}
@@ -215,28 +202,6 @@ export const ComplaintDetailsModal: React.FC<Props> = ({ complaint, authorities,
               <button onClick={() => setShowRepair(false)} className="flex-1 border border-gray-200 rounded-xl py-2.5 text-sm font-bold text-gray-700 hover:bg-gray-50">Cancel</button>
               <button onClick={handleRepairSubmit} disabled={isActing || !repairNotes.trim()} className="flex-1 bg-green-600 text-white rounded-xl py-2.5 text-sm font-black hover:bg-green-700 disabled:opacity-70">
                 {isActing ? "Submitting..." : "Submit & Resolve"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Assign Modal */}
-      {showAssign && (
-        <div className="fixed inset-0 bg-black/60 z-60 flex items-end sm:items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-5 w-full max-w-md">
-            <h3 className="font-black text-gray-800 mb-3">Assign to Authority</h3>
-            <label className="text-xs font-bold text-gray-600 block mb-1">Select Authority</label>
-            <select value={assignAuthId} onChange={e => setAssignAuthId(e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="">-- Select Authority --</option>
-              {authorities.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-            </select>
-            <label className="text-xs font-bold text-gray-600 block mb-1">Notes (optional)</label>
-            <textarea value={assignNotes} onChange={e => setAssignNotes(e.target.value)} rows={2} className="w-full border rounded-lg px-3 py-2 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
-            <div className="flex gap-2">
-              <button onClick={() => setShowAssign(false)} className="flex-1 border border-gray-200 rounded-xl py-2.5 text-sm font-bold text-gray-700 hover:bg-gray-50">Cancel</button>
-              <button onClick={handleAssignSubmit} disabled={isActing || !assignAuthId} className="flex-1 bg-blue-600 text-white rounded-xl py-2.5 text-sm font-black hover:bg-blue-700 disabled:opacity-70">
-                {isActing ? "Assigning..." : "Assign"}
               </button>
             </div>
           </div>

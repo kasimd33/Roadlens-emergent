@@ -478,7 +478,7 @@ export const InspectPage: React.FC = () => {
                   <div className="flex-1 min-w-0">
                     <p className="text-[13px] font-black text-green-800">Complaint Successfully Filed!</p>
                     <p className="text-[11px] text-green-700 mt-0.5">
-                      Ticket #{submittedSuccessId.slice(-5).toUpperCase()} auto-assigned to Authority.
+                      Ticket #{submittedSuccessId.slice(-5).toUpperCase()} sent to field officers near your location.
                     </p>
                   </div>
                   <Link
@@ -499,7 +499,7 @@ export const InspectPage: React.FC = () => {
                   ) : (
                     <>
                       <Send size={18} />
-                      Submit &amp; Auto-Assign to Authority
+                      Submit Complaint
                     </>
                   )}
                 </button>

@@ -1,14 +1,20 @@
 """
-Seed municipal authority divisions + authority login accounts into a
+Seed the SINGLE municipal authority division + its one login account into a
 RoadLens production database (Atlas).
 
-Production runs with ALLOW_DEMO_DATA=false, so neither the divisions nor the
-authority users exist at startup. This script:
-  1. Upserts the 4 Ballari (Karnataka) municipal divisions (idempotent - never overwrites
-     existing documents, safe to re-run).
-  2. Creates one AUTHORITY login per division with a STRONG RANDOM password
-     (printed once at the end - save it). Emails/passwords can be overridden
-     via AUTH_EMAILS / AUTH_PASSWORDS env vars (comma-separated, same order).
+RoadLens runs with exactly ONE authority: every complaint, regardless of where
+it was reported from, is routed to this division, and only this division's
+login can acknowledge / progress / resolve complaints. (Citizens see this as
+"routed to nearby field officers".)
+
+This script (idempotent - safe to re-run):
+  1. Upserts the single authority division.
+  2. Creates the single AUTHORITY login (authority@roadlens.gov) with a STRONG
+     RANDOM password (printed once at the end - save it), unless it already
+     exists. Email/password can be overridden via AUTH_EMAIL / AUTH_PASSWORD
+     env vars.
+  3. Retires any legacy extra authority divisions and deletes every other
+     AUTHORITY login, so only the single credential keeps working.
 
 Usage:
     cd backend
@@ -27,66 +33,28 @@ from pymongo import MongoClient
 DB_NAME = "roadlens_db"
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# Same division ids as the app's demo/locality-matching logic expects
-# (find_matching_authority matches complaint locations against coverage_area).
-DIVISIONS = [
-    {
-        "id": "auth-downtown",
-        "code": "AUTH-CENTRAL",
-        "name": "Central Ballari Roads & Works Division",
-        "zone": "Central Ballari",
-        "coverage_area": "Gandhi Nagar, Cowl Bazaar, Brucepeta, Court Circle",
-        "contact_email": "central.roads@roadlens.gov.in",
-        "contact_phone": "+91 8392 223456",
-        "hq_latitude": 15.1394,
-        "hq_longitude": 76.9214,
-        "active_complaints_count": 0,
-        "resolved_count": 0,
-    },
-    {
-        "id": "auth-north",
-        "code": "AUTH-NORTH",
-        "name": "North Ballari Municipal Highways",
-        "zone": "North Ballari",
-        "coverage_area": "Kudithini, Moka, Hospet Rd, NH-50 Corridor",
-        "contact_email": "north.highways@roadlens.gov.in",
-        "contact_phone": "+91 8392 234567",
-        "hq_latitude": 15.2050,
-        "hq_longitude": 76.8930,
-        "active_complaints_count": 0,
-        "resolved_count": 0,
-    },
-    {
-        "id": "auth-south",
-        "code": "AUTH-SOUTH",
-        "name": "South Ballari Infrastructure Corp",
-        "zone": "South Ballari & Industrial Belt",
-        "coverage_area": "Kappagal, Allipuram, BSS Hill, Industrial Estate",
-        "contact_email": "south.infra@roadlens.gov.in",
-        "contact_phone": "+91 8392 245678",
-        "hq_latitude": 15.1050,
-        "hq_longitude": 76.9100,
-        "active_complaints_count": 0,
-        "resolved_count": 0,
-    },
-    {
-        "id": "auth-suburban",
-        "code": "AUTH-EAST",
-        "name": "East Ballari Public Works",
-        "zone": "East Ballari & Tech Corridor",
-        "coverage_area": "Siruguppa Rd, Vaddaragatti, Bukkasagara, Moka Rd",
-        "contact_email": "east.publicworks@roadlens.gov.in",
-        "contact_phone": "+91 8392 256789",
-        "hq_latitude": 15.1600,
-        "hq_longitude": 76.9800,
-        "active_complaints_count": 0,
-        "resolved_count": 0,
-    },
-]
+# The one and only authority division (must match server.py SINGLE_AUTHORITY)
+AUTHORITY = {
+    "id": "auth-main",
+    "code": "AUTH-MAIN",
+    "name": "Ballari City Roads Authority",
+    "zone": "All Ballari",
+    "coverage_area": "All zones and localities",
+    "contact_email": "authority@roadlens.gov.in",
+    "contact_phone": "+91 8392 200000",
+    "hq_latitude": 15.1394,
+    "hq_longitude": 76.9214,
+    "active_complaints_count": 0,
+    "resolved_count": 0,
+    "deleted": False,
+}
+AUTHORITY_LOGIN_EMAIL = "authority@roadlens.gov"
+AUTHORITY_LOGIN_NAME = "Priya Nair (Lead Field Engineer)"
+AUTHORITY_LOGIN_PHONE = "+91 98860 23456"
 
 
 def main() -> None:
-    print("=== RoadLens authority seeding ===")
+    print("=== RoadLens single-authority seeding ===")
     mongo_url = os.getenv("MONGO_URL", "").strip()
     if not mongo_url:
         mongo_url = getpass.getpass("MONGO_URL (Atlas connection string, hidden): ").strip()
@@ -104,54 +72,65 @@ def main() -> None:
     db = client[DB_NAME]
     now = datetime.now(timezone.utc).isoformat()
 
-    # 1. Municipal divisions (upsert, $setOnInsert = idempotent)
-    for division in DIVISIONS:
-        doc = {**division, "created_at": now}
-        result = db.authorities.update_one({"id": doc["id"]}, {"$setOnInsert": doc}, upsert=True)
-        status = "created" if result.upserted_id else "already exists"
-        print(f"division  {doc['id']}: {status}")
-        # Backfill HQ coordinates on divisions created before geo-routing existed
-        db.authorities.update_one(
-            {"id": doc["id"], "hq_latitude": {"$exists": False}},
-            {"$set": {"hq_latitude": division["hq_latitude"], "hq_longitude": division["hq_longitude"]}}
-        )
+    # 1. The single authority division (upsert, $setOnInsert = idempotent)
+    doc = {**AUTHORITY, "created_at": now}
+    result = db.authorities.update_one({"id": doc["id"]}, {"$setOnInsert": doc}, upsert=True)
+    status = "created" if result.upserted_id else "already exists"
+    print(f"authority {doc['id']}: {status}")
 
-    # 2. One authority login per division
-    emails = [e.strip().lower() for e in os.getenv("AUTH_EMAILS", "").split(",") if e.strip()]
-    passwords = [p.strip() for p in os.getenv("AUTH_PASSWORDS", "").split(",") if p.strip()]
-    created = []
-    for i, division in enumerate(DIVISIONS):
-        email = emails[i] if i < len(emails) else division["contact_email"]
-        if db.users.find_one({"username": email}):
-            print(f"SKIP      {email}  (user already exists)")
-            continue
-        password = passwords[i] if i < len(passwords) else secrets.token_urlsafe(12)
-        engineer_name = f"{division['zone']} Field Engineer"
+    # 2. Retire legacy extra divisions (keep the single one)
+    retired = db.authorities.update_many(
+        {"id": {"$ne": AUTHORITY["id"]}, "deleted": {"$ne": True}},
+        {"$set": {"deleted": True}}
+    )
+    print(f"retired divisions: {retired.modified_count}")
+
+    # 3. The single authority login
+    email = os.getenv("AUTH_EMAIL", AUTHORITY_LOGIN_EMAIL).strip().lower()
+    if db.users.find_one({"username": email}):
+        print(f"SKIP      {email}  (user already exists)")
+        password = None
+    else:
+        password = os.getenv("AUTH_PASSWORD", "").strip() or secrets.token_urlsafe(12)
         db.users.insert_one({
             "id": str(uuid.uuid4()),
             "username": email,
             "email": email,
             "password_hash": pwd_context.hash(password),
-            "full_name": f"{engineer_name} ({division['name']})",
-            "name": engineer_name,
-            "phone": division["contact_phone"],
+            "full_name": AUTHORITY_LOGIN_NAME,
+            "name": AUTHORITY_LOGIN_NAME,
+            "phone": AUTHORITY_LOGIN_PHONE,
             "role": "AUTHORITY",
             "status": "ACTIVE",
             "auth_provider": "password",
-            "authority_id": division["id"],
-            "authority_name": division["name"],
+            "authority_id": AUTHORITY["id"],
+            "authority_name": AUTHORITY["name"],
             "disabled": False,
             "created_at": now,
         })
-        created.append((email, division["name"], password))
+        print(f"created   {email}")
 
-    print("\n=== AUTHORITY LOGINS (save these now, they are not stored in plaintext) ===")
-    for email, division_name, password in created:
-        print(f"  {email}  |  {password}   ({division_name})")
-    if not created:
-        print("  (no new accounts created)")
-    print("\nAuthority users see only their division's complaints and handle the")
-    print("ACKNOWLEDGED -> IN_PROGRESS -> RESOLVED repair workflow.")
+    # 4. Delete every other AUTHORITY login so old credentials stop working
+    removed = db.users.delete_many({"role": "AUTHORITY", "username": {"$ne": email}})
+    print(f"removed legacy authority logins: {removed.deleted_count}")
+
+    # 5. Repoint all complaints to the single authority
+    repointed = db.complaints.update_many(
+        {"assigned_authority_id": {"$ne": AUTHORITY["id"]}},
+        {"$set": {
+            "assigned_authority_id": AUTHORITY["id"],
+            "assigned_authority_name": AUTHORITY["name"],
+        }}
+    )
+    print(f"repointed complaints: {repointed.modified_count}")
+
+    print("\n=== AUTHORITY LOGIN (save it now, it is not stored in plaintext) ===")
+    if password:
+        print(f"  {email}  |  {password}")
+    else:
+        print(f"  {email}  |  (existing account - password unchanged)")
+    print("\nThis is the ONLY authority account. It sees and handles every complaint:")
+    print("ACKNOWLEDGE -> IN_PROGRESS -> RESOLVED (with repair proof).")
 
 
 if __name__ == "__main__":

@@ -114,7 +114,7 @@ class TestAdminAuthorityUsers:
         email = f"TEST_auth_{uuid.uuid4().hex[:8]}@roadlens.test"
         password = "Auth@1234"
         payload = {"email": email, "password": password, "name": "TEST Authority Agent",
-                   "authority_id": "auth-north"}
+                   "authority_id": "auth-main"}
         r = requests.post(
             f"{API}/admin/authority-users",
             json=payload,
@@ -124,7 +124,8 @@ class TestAdminAuthorityUsers:
         assert r.status_code == 201, r.text
         u = r.json()
         assert u["role"] == "AUTHORITY"
-        assert u["authority_id"] == "auth-north"
+        # Single-authority model: every authority login lands under auth-main
+        assert u["authority_id"] == "auth-main"
         assert u["email"] == email.lower()
 
         # Confirm the created authority user can log in
@@ -132,7 +133,7 @@ class TestAdminAuthorityUsers:
         assert login_r.status_code == 200, login_r.text
         assert login_r.json()["user"]["role"] == "AUTHORITY"
 
-    def test_admin_create_authority_invalid_authority_id_returns_404(self):
+    def test_admin_create_authority_unknown_authority_id_still_lands_under_single_authority(self):
         token = self._admin_token()
         payload = {"email": f"TEST_bad_{uuid.uuid4().hex[:8]}@roadlens.test",
                    "password": "Passw0rd!", "name": "X", "authority_id": "auth-does-not-exist"}
@@ -142,13 +143,14 @@ class TestAdminAuthorityUsers:
             headers={"Authorization": f"Bearer {token}"},
             timeout=30,
         )
-        assert r.status_code == 404
+        assert r.status_code == 201, r.text
+        assert r.json()["authority_id"] == "auth-main"
 
     def test_admin_create_authority_duplicate_email_returns_409(self):
         token = self._admin_token()
         email = f"TEST_dup_auth_{uuid.uuid4().hex[:8]}@roadlens.test"
         payload = {"email": email, "password": "Passw0rd!", "name": "Dup Auth",
-                   "authority_id": "auth-north"}
+                   "authority_id": "auth-main"}
         r1 = requests.post(
             f"{API}/admin/authority-users",
             json=payload,
@@ -169,7 +171,7 @@ class TestAdminAuthorityUsers:
         assert r.status_code == 200
         user_token = r.json()["access_token"]
         payload = {"email": f"TEST_forbid_{uuid.uuid4().hex[:8]}@roadlens.test",
-                   "password": "Passw0rd!", "name": "X", "authority_id": "auth-north"}
+                   "password": "Passw0rd!", "name": "X", "authority_id": "auth-main"}
         r2 = requests.post(
             f"{API}/admin/authority-users",
             json=payload,
@@ -180,7 +182,7 @@ class TestAdminAuthorityUsers:
 
     def test_no_token_authority_create_returns_401(self):
         payload = {"email": f"TEST_noauth_{uuid.uuid4().hex[:8]}@roadlens.test",
-                   "password": "Passw0rd!", "name": "X", "authority_id": "auth-north"}
+                   "password": "Passw0rd!", "name": "X", "authority_id": "auth-main"}
         r = requests.post(f"{API}/admin/authority-users", json=payload, timeout=15)
         assert r.status_code == 401
 

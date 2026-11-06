@@ -5,12 +5,7 @@ import {
   Hand,
   Wrench,
   Camera,
-  GitBranch,
   Building,
-  Trash2,
-  CheckCircle,
-  Plus,
-  UserPlus,
   User as UserIcon,
   Briefcase,
   CameraOff,
@@ -21,9 +16,6 @@ import { SeverityBadge } from "../components/SeverityBadge";
 import { StatusBadge } from "../components/StatusBadge";
 import { ComplaintDetailsModal } from "../components/ComplaintDetailsModal";
 import { RepairModal } from "../components/RepairModal";
-import { AssignModal } from "../components/AssignModal";
-import { CreateAuthorityUserModal } from "../components/CreateAuthorityUserModal";
-import { CreateAuthorityDepartmentModal } from "../components/CreateAuthorityDepartmentModal";
 import type { Complaint, Authority } from "../types";
 
 const FALLBACK_IMG = "https://images.unsplash.com/photo-1709934730506-fba12664d4e4";
@@ -44,21 +36,7 @@ export const WorkspacePage: React.FC = () => {
 
   const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
   const [activeRepairComplaint, setActiveRepairComplaint] = useState<Complaint | null>(null);
-  const [activeAssignComplaint, setActiveAssignComplaint] = useState<Complaint | null>(null);
-  const [showCreateAuthority, setShowCreateAuthority] = useState(false);
-  const [showCreateDept, setShowCreateDept] = useState(false);
-  const [deptError, setDeptError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-
-  const deleteAuthorityMutation = useMutation({
-    mutationFn: (id: string) => api.deleteAuthority(id),
-    onSuccess: () => {
-      setDeptError(null);
-      queryClient.invalidateQueries({ queryKey: ["authorities"] });
-      queryClient.invalidateQueries({ queryKey: ["adminStats"] });
-    },
-    onError: (e: Error) => setDeptError(e?.message || "Could not remove department."),
-  });
 
   const { data: allComplaints = [], isLoading: complaintsLoading } = useQuery({
     queryKey: ["complaints"],
@@ -100,19 +78,6 @@ export const WorkspacePage: React.FC = () => {
     onError: (e: Error) => setActionError(e?.message || "Action failed."),
   });
 
-  const assignMutation = useMutation({
-    mutationFn: ({ id, authorityId, notes }: { id: string; authorityId: string; notes: string }) =>
-      api.assignComplaint(id, { authority_id: authorityId, notes }),
-    onSuccess: (updated) => {
-      setActionError(null);
-      queryClient.invalidateQueries({ queryKey: ["complaints"] });
-      queryClient.invalidateQueries({ queryKey: ["adminStats"] });
-      queryClient.invalidateQueries({ queryKey: ["authorities"] });
-      setSelectedComplaint(updated);
-    },
-    onError: (e: Error) => setActionError(e?.message || "Assignment failed."),
-  });
-
   // Role-filtered complaints (same logic as the mobile app)
   const assignedToAuthority: Complaint[] = allComplaints.filter(
     (c) =>
@@ -121,10 +86,6 @@ export const WorkspacePage: React.FC = () => {
       c.status === "ASSIGNED" ||
       c.status === "ACKNOWLEDGED" ||
       c.status === "IN_PROGRESS",
-  );
-
-  const unassignedComplaints: Complaint[] = allComplaints.filter(
-    (c) => !c.assigned_authority_id || c.status === "SUBMITTED",
   );
 
   const citizenMyReports: Complaint[] = allComplaints.filter(
@@ -149,7 +110,7 @@ export const WorkspacePage: React.FC = () => {
             <div>
               <h1 className="text-xl font-black text-gray-800">Authority Field Workspace</h1>
               <p className="text-xs text-gray-500 mt-1">
-                {user?.authority_name || "Central Ballari Roads & Works Division"}
+                {user?.authority_name || "Ballari City Roads Authority"}
               </p>
             </div>
             <span className="bg-amber-500 text-white text-[11px] font-extrabold rounded-md px-2.5 py-1 whitespace-nowrap">
@@ -256,65 +217,13 @@ export const WorkspacePage: React.FC = () => {
             <p className="text-xs text-gray-500 mt-1">Municipal Overview &amp; Authority Dispatching</p>
           </div>
 
-          {/* Unassigned dispatch queue */}
-          <section>
-            <h2 className="text-[15px] font-black text-gray-800 mb-2.5">
-              Unassigned / Pending Dispatch ({unassignedComplaints.length})
-            </h2>
-
-            {unassignedComplaints.length === 0 ? (
-              <div className="flex items-center gap-2 border border-gray-200 rounded-lg p-3 bg-white">
-                <CheckCircle size={24} className="text-green-600 shrink-0" />
-                <p className="text-xs text-gray-500">
-                  All current complaints are assigned to municipal authorities.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-2.5">
-                {unassignedComplaints.map((c) => (
-                  <div
-                    key={c.id}
-                    className="flex items-center gap-3 bg-white border border-gray-200 rounded-lg p-3"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-                        <SeverityBadge severity={c.severity} size="sm" />
-                        <StatusBadge status={c.status} size="sm" />
-                      </div>
-                      <p className="text-sm font-bold text-gray-800 truncate">{c.title}</p>
-                      <p className="text-[11px] text-gray-500 truncate mt-0.5">{c.location_name}</p>
-                    </div>
-                    <button
-                      onClick={() => setActiveAssignComplaint(c)}
-                      className="flex items-center gap-1 bg-blue-700 text-white rounded-md px-3 py-2 text-xs font-bold hover:bg-blue-800 shrink-0"
-                    >
-                      <GitBranch size={14} /> Assign
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-
           {/* Authorities directory */}
           <section>
             <div className="flex items-center justify-between mb-2.5 gap-2">
               <h2 className="text-[15px] font-black text-gray-800">
                 Municipal Authority Divisions ({authorities.length})
               </h2>
-              <button
-                onClick={() => setShowCreateDept(true)}
-                className="flex items-center gap-1 bg-blue-700 text-white rounded-md px-2.5 py-1.5 text-xs font-extrabold hover:bg-blue-800 shrink-0"
-              >
-                <Plus size={16} /> Add Department
-              </button>
             </div>
-
-            {deptError && (
-              <p className="text-xs font-semibold text-red-600 bg-red-100 rounded-lg px-3 py-2 mb-2.5" role="alert">
-                {deptError}
-              </p>
-            )}
 
             <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
               {authorities.map((auth: Authority) => (
@@ -322,13 +231,6 @@ export const WorkspacePage: React.FC = () => {
                   <div className="flex items-center gap-1.5 mb-1">
                     <Building size={18} className="text-blue-700" />
                     <span className="text-[11px] font-extrabold text-blue-700">{auth.code}</span>
-                    <button
-                      onClick={() => deleteAuthorityMutation.mutate(auth.id)}
-                      className="ml-auto p-1 text-red-600 hover:bg-red-50 rounded"
-                      aria-label={`Delete ${auth.name}`}
-                    >
-                      <Trash2 size={16} />
-                    </button>
                   </div>
                   <p className="text-sm font-bold text-gray-800">{auth.name}</p>
                   <p className="text-[11px] text-gray-500 mt-0.5">Zone: {auth.zone}</p>
@@ -352,12 +254,6 @@ export const WorkspacePage: React.FC = () => {
               <h2 className="text-[15px] font-black text-gray-800">
                 Registered User Directory ({adminUsers.length})
               </h2>
-              <button
-                onClick={() => setShowCreateAuthority(true)}
-                className="flex items-center gap-1 bg-blue-700 text-white rounded-md px-2.5 py-1.5 text-xs font-extrabold hover:bg-blue-800 shrink-0"
-              >
-                <UserPlus size={14} /> Add Authority
-              </button>
             </div>
 
             <div className="bg-white border border-gray-200 rounded-lg overflow-hidden divide-y divide-gray-200">
@@ -429,7 +325,7 @@ export const WorkspacePage: React.FC = () => {
                       <p className="text-[11px] text-gray-500 truncate">{c.location_name}</p>
                       <p className="text-[11px] font-semibold text-blue-700 truncate">
                         <Briefcase size={12} className="inline mr-1 -mt-0.5" />
-                        {c.assigned_authority_name || "Awaiting Dispatch"}
+                        {c.assigned_authority_name ? "Nearby Field Officers" : "Awaiting Dispatch"}
                       </p>
                     </div>
                   </button>
@@ -443,7 +339,6 @@ export const WorkspacePage: React.FC = () => {
       {/* Complaint details */}
       <ComplaintDetailsModal
         complaint={selectedComplaint}
-        authorities={authorities}
         onClose={() => setSelectedComplaint(null)}
         onStatusUpdate={async (status, notes, repairBase64, repairUrl) => {
           if (selectedComplaint) {
@@ -454,11 +349,6 @@ export const WorkspacePage: React.FC = () => {
               repairBase64,
               repairUrl,
             });
-          }
-        }}
-        onAssign={async (authorityId, notes) => {
-          if (selectedComplaint) {
-            await assignMutation.mutateAsync({ id: selectedComplaint.id, authorityId, notes });
           }
         }}
       />
@@ -481,38 +371,6 @@ export const WorkspacePage: React.FC = () => {
           }}
         />
       )}
-
-      {/* Admin quick assign */}
-      {activeAssignComplaint && (
-        <AssignModal
-          complaintId={activeAssignComplaint.id}
-          complaintTitle={activeAssignComplaint.title}
-          authorities={authorities}
-          currentAssignedId={activeAssignComplaint.assigned_authority_id}
-          onClose={() => setActiveAssignComplaint(null)}
-          onAssign={async (authId, notes) => {
-            await assignMutation.mutateAsync({
-              id: activeAssignComplaint.id,
-              authorityId: authId,
-              notes,
-            });
-            setActiveAssignComplaint(null);
-          }}
-        />
-      )}
-
-      {/* Admin: create authority login */}
-      <CreateAuthorityUserModal
-        visible={showCreateAuthority}
-        onClose={() => setShowCreateAuthority(false)}
-        authorities={authorities}
-      />
-
-      {/* Admin: create authority department */}
-      <CreateAuthorityDepartmentModal
-        visible={showCreateDept}
-        onClose={() => setShowCreateDept(false)}
-      />
     </div>
   );
 };

@@ -29,11 +29,24 @@ function hashString(text: string): number {
   return Math.abs(h);
 }
 
-/** "Sayyaji Rao Road, Mysuru" -> "Mysuru" (last comma segment). */
+/** Segments that are states/countries/regions, never a city name. */
+const GEO_STOPWORDS = new Set([
+  "karnataka", "andhra pradesh", "telangana", "tamil nadu", "kerala",
+  "maharashtra", "goa", "odisha", "bihar", "gujarat", "punjab", "rajasthan",
+  "delhi", "india", "district", "state", "ka", "in",
+]);
+
+/**
+ * "Sayyaji Rao Road, Mysuru" -> "Mysuru"
+ * "Court Circle, Ballari, Karnataka" -> "Ballari" (skips the state)
+ */
 function cityFromLocation(locationName: string): string {
   const parts = (locationName || "").split(",").map((p) => p.trim()).filter(Boolean);
-  const city = parts.length > 1 ? parts[parts.length - 1] : parts[0] || "";
-  return city.length >= 2 ? city : "City";
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const seg = parts[i].toLowerCase();
+    if (seg.length >= 2 && !GEO_STOPWORDS.has(seg)) return parts[i];
+  }
+  return "City";
 }
 
 export function fakeAuthorityName(complaint: Pick<Complaint, "location_name">): string {

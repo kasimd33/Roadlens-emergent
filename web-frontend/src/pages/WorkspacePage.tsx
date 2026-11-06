@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { api } from "../api/client";
 import { useAuth } from "../context/AuthContext";
+import { fakeAuthorityName } from "../utils/fakeAuthority";
 import { SeverityBadge } from "../components/SeverityBadge";
 import { StatusBadge } from "../components/StatusBadge";
 import { ComplaintDetailsModal } from "../components/ComplaintDetailsModal";
@@ -325,7 +326,7 @@ export const WorkspacePage: React.FC = () => {
                       <p className="text-[11px] text-gray-500 truncate">{c.location_name}</p>
                       <p className="text-[11px] font-semibold text-blue-700 truncate">
                         <Briefcase size={12} className="inline mr-1 -mt-0.5" />
-                        {c.assigned_authority_name ? "Nearby Field Officers" : "Awaiting Dispatch"}
+                        {c.assigned_authority_name ? fakeAuthorityName(c) : "Awaiting Dispatch"}
                       </p>
                     </div>
                   </button>

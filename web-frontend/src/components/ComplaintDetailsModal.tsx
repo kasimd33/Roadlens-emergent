@@ -6,6 +6,7 @@ import { StatusBadge } from "./StatusBadge";
 import { BoundingBoxView } from "./BoundingBoxView";
 import { StatusTimeline } from "./StatusTimeline";
 import { useAuth } from "../context/AuthContext";
+import { fakeAuthorityName } from "../utils/fakeAuthority";
 
 interface Props {
   complaint: Complaint | null;
@@ -97,12 +98,12 @@ export const ComplaintDetailsModal: React.FC<Props> = ({ complaint, onClose, onS
             <div className="flex-1">
               {role === "USER" ? (
                 <>
-                  <p className="text-sm font-bold text-gray-800">Nearby Municipal Officers</p>
-                  <p className="text-xs text-gray-500">{complaint.assigned_authority_name ? "Routed to officers near your location" : "Awaiting Routing"}</p>
+                  <p className="text-sm font-bold text-gray-800">{complaint.assigned_authority_name ? fakeAuthorityName(complaint) : "Awaiting Routing"}</p>
+                  <p className="text-xs text-gray-500">{complaint.assigned_authority_name ? "Officers near your location" : "Pending"}</p>
                 </>
               ) : (
                 <>
-                  <p className="text-sm font-bold text-gray-800">{complaint.assigned_authority_name || "UNASSIGNED (Pending Dispatch)"}</p>
+                  <p className="text-sm font-bold text-gray-800">{complaint.assigned_authority_name ? fakeAuthorityName(complaint) : "UNASSIGNED (Pending Dispatch)"}</p>
                   <p className="text-xs text-gray-500">{complaint.assigned_authority_name ? "Assigned Municipal Unit" : "Awaiting Admin Routing"}</p>
                 </>
               )}

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Search, XCircle, MapPin, Building2, SearchX } from "lucide-react";
 import { api } from "../api/client";
-import { useAuth } from "../context/AuthContext";
+import { fakeAuthorityName } from "../utils/fakeAuthority";
 import { SeverityBadge } from "../components/SeverityBadge";
 import { StatusBadge } from "../components/StatusBadge";
 import { ComplaintDetailsModal } from "../components/ComplaintDetailsModal";
@@ -34,7 +34,6 @@ function complaintImage(c: Complaint): string {
 
 export const ComplaintsPage: React.FC = () => {
   const queryClient = useQueryClient();
-  const { role } = useAuth();
 
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [severityFilter, setSeverityFilter] = useState("ALL");
@@ -176,7 +175,7 @@ export const ComplaintsPage: React.FC = () => {
                   <span className="flex items-center min-w-0 text-[10px] font-bold text-blue-700">
                     <Building2 size={12} className="mr-1 shrink-0" />
                     <span className="truncate">
-                      {role === "USER" ? (item.assigned_authority_name ? "Nearby Field Officers" : "Unassigned") : (item.assigned_authority_name || "Unassigned")}
+                      {item.assigned_authority_name ? fakeAuthorityName(item) : "Unassigned"}
                     </span>
                   </span>
                   <span className="text-[10px] text-gray-400 shrink-0">

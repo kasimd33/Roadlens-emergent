@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { api } from "../api/client";
 import { useAuth } from "../context/AuthContext";
+import { fakeAuthorityName } from "../utils/fakeAuthority";
 import { SeverityBadge } from "../components/SeverityBadge";
 import { StatusBadge } from "../components/StatusBadge";
 import { ComplaintDetailsModal } from "../components/ComplaintDetailsModal";
@@ -248,7 +249,7 @@ export const DashboardPage: React.FC = () => {
                     <span className="flex items-center min-w-0 text-[10px] font-semibold text-blue-700">
                       <Building2 size={12} className="mr-1 shrink-0" />
                       <span className="truncate">
-                        {role === "USER" ? (item.assigned_authority_name ? "Nearby Field Officers" : "Unassigned") : (item.assigned_authority_name || "Unassigned")}
+                        {item.assigned_authority_name ? fakeAuthorityName(item) : "Unassigned"}
                       </span>
                     </span>
                     <span className="text-[10px] text-gray-400 shrink-0">
